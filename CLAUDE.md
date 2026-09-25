@@ -6,7 +6,7 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 ## Arquitetura (seção 3)
 - Frontend: HTML, CSS e JS puros em `docs/` (GitHub Pages, branch `main`, pasta `/docs`). Sem framework, sem build, **sem segredos**. `docs/config.js` contém só a URL do web app e a site key pública do Turnstile.
 - Backend: projeto Google Apps Script **standalone** em `apps-script/`. Acessa a planilha só por `SpreadsheetApp.openById(SPREADSHEET_ID)`.
-- IA: `https://api.anthropic.com/v1/messages`, modelo `claude-sonnet-5` (configurável em `Config.gs`), `anthropic-version: 2023-06-01`, temperatura 0.2, uma única chamada por demanda. Sem embeddings. Pré-seleção por termos só se houver mais de 40 candidatos.
+- IA: `https://api.anthropic.com/v1/messages`, modelo `claude-sonnet-5` (configurável em `Config.gs`), `anthropic-version: 2023-06-01`, uma única chamada por demanda. **Não enviar `temperature`**: o Sonnet 5 rejeita parâmetros de amostragem (HTTP 400). A resposta pode trazer blocos `thinking`; ler só os blocos `text`. Sem embeddings. Pré-seleção por termos só se houver mais de 40 candidatos.
 - Frontend → backend: `POST` com `Content-Type: text/plain;charset=utf-8` e corpo JSON. Resposta via `ContentService` + `MimeType.JSON`.
 
 ## Script existente
@@ -40,6 +40,6 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 - Prompt em `apps-script/Prompt.gs` com `PROMPT_VERSAO`. Mudou o texto, incrementa a versão.
 
 ## Testes e fluxo
-- Funções puras (`Prazo.gs`, `Preselecao.gs`) rodam no Apps Script e no Node (`if (typeof module !== 'undefined') module.exports = {...}`). Testes: `node --test tests/`.
+- Funções puras (`Prazo.gs`, `Preselecao.gs`) rodam no Apps Script e no Node (`if (typeof module !== 'undefined') module.exports = {...}`). Testes: `node --test` (descobre `tests/*.test.js`). `tests/apps-script.test.js` carrega todos os `.gs` com serviços simulados e confere colisão de nomes com o script existente.
 - Construção por etapas (seção 12), com revisão do Bruno ao fim de cada uma. Commit em português ao fim de cada etapa, direto na `main`.
 - Ao fim de cada etapa, rodar `/security-review` e corrigir os achados relevantes.
