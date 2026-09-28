@@ -270,6 +270,16 @@ test('testarMatching(): requisição correta, sem dados internos, e cards no log
   assert.match(saida, /\[70 · Boa aderência\] Wellcome Trust \(UK\)/);
 });
 
+test('imprimirEmBlocos_: nenhum console.log passa de 6.000 caracteres e nada se perde', () => {
+  const { ctx, logs } = criarContexto(montarPlanilha());
+  const linhas = Array.from({ length: 300 }, (_, i) => `linha ${i} ` + 'x'.repeat(100));
+  linhas.push('y'.repeat(15000));
+  ctx.imprimirEmBlocos_(linhas);
+  assert.ok(logs.length > 1);
+  assert.ok(logs.every(l => l.length <= 6000));
+  assert.equal(logs.join('\n').replace(/\n/g, ''), linhas.join('').replace(/\n/g, ''));
+});
+
 test('matching: repete uma vez se o JSON vier inválido e lê só blocos de texto', () => {
   const { ctx, requisicoes } = criarContexto(montarPlanilha(), [
     respostaClaude('isto não é JSON'),

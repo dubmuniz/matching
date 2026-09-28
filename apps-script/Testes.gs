@@ -94,7 +94,7 @@ function diagnosticoBase() {
 
   log('');
   log('===== FIM =====');
-  console.log(linhas.join('\n'));
+  imprimirEmBlocos_(linhas);
 }
 
 /* ---------------- testarMatching ---------------- */
@@ -148,7 +148,7 @@ function testarMatching() {
   try {
     r = executarMatchingIA_(cfg, DEMANDA_EXEMPLO_, candidatos, financiadores);
   } catch (e) {
-    console.log(linhas.join('\n'));
+    imprimirEmBlocos_(linhas);
     throw e;
   }
   var segundos = ((Date.now() - inicio) / 1000).toFixed(1);
@@ -198,7 +198,7 @@ function testarMatching() {
 
   log('');
   log('===== FIM =====');
-  console.log(linhas.join('\n'));
+  imprimirEmBlocos_(linhas);
 }
 
 function seloTeste_(nota) {
@@ -206,6 +206,29 @@ function seloTeste_(nota) {
   if (nota >= 60) return 'Boa aderência';
   if (nota >= 40) return 'Aderência parcial';
   return 'Baixa aderência';
+}
+
+var TAMANHO_BLOCO_LOG_ = 6000; // o Apps Script corta cada console.log em ~8 KB
+
+/**
+ * Imprime as linhas em vários console.log de até ~6.000 caracteres, quebrando
+ * entre linhas. Uma linha maior que o bloco é dividida em pedaços.
+ */
+function imprimirEmBlocos_(linhas) {
+  var blocos = [], atual = '';
+  var fechar = function () { if (atual) { blocos.push(atual); atual = ''; } };
+  (linhas || []).forEach(function (linha) {
+    var s = String(linha);
+    while (s.length > TAMANHO_BLOCO_LOG_) {
+      fechar();
+      blocos.push(s.slice(0, TAMANHO_BLOCO_LOG_));
+      s = s.slice(TAMANHO_BLOCO_LOG_);
+    }
+    if (atual && atual.length + 1 + s.length > TAMANHO_BLOCO_LOG_) fechar();
+    atual = atual ? atual + '\n' + s : s;
+  });
+  fechar();
+  blocos.forEach(function (b) { console.log(b); });
 }
 
 function listaOuNenhuma_(lista) {
