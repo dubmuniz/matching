@@ -17,16 +17,17 @@ var CONFIG_MATCHING = {
   ANTHROPIC_URL: 'https://api.anthropic.com/v1/messages',
   ANTHROPIC_VERSAO: '2023-06-01',
   MODELO_PADRAO: 'claude-sonnet-5',
-  MAX_TOKENS: 6000,
-  TIMEOUT_MS: 120000,
-  TENTATIVAS_MAX: 4,
+  // max_tokens inclui o raciocínio adaptativo do Sonnet 5; os 6000 do briefing podem cortar o JSON.
+  MAX_TOKENS_PADRAO: 16000,
+  // Esforço do raciocínio: 'low' | 'medium' | 'high'. Mais alto = análise mais cuidadosa, porém mais lenta e cara.
+  ESFORCO_PADRAO: 'low',
+  USAR_SAIDA_ESTRUTURADA: true,
+  TENTATIVAS_MAX: 3,
   ESPERA_BASE_MS: 1500,
 
   // Matching
   MIN_DIAS_PRAZO_PADRAO: 21,
   MAX_CANDIDATOS: 40,
-  MAX_CARACTERES_CAMPO_IA: 1200,
-  MAX_CARACTERES_TEXTO_IA_SAIDA: 400,
 
   // Fuso
   FUSO: 'America/Sao_Paulo'
@@ -41,7 +42,9 @@ var PROPRIEDADES_MATCHING = [
   'TURNSTILE_ATIVO',
   'TURNSTILE_SECRET',
   'MIN_DIAS_PRAZO',
-  'MODELO_CLAUDE'
+  'MODELO_CLAUDE',
+  'ESFORCO_CLAUDE',
+  'MAX_TOKENS_CLAUDE'
 ];
 
 var VALOR_EXEMPLO_ = 'COLE_AQUI';
@@ -63,7 +66,9 @@ function configurarPropriedades() {
     TURNSTILE_ATIVO: 'nao',               // 'sim' antes da divulgação ampla
     TURNSTILE_SECRET: 'COLE_AQUI',
     MIN_DIAS_PRAZO: '21',
-    MODELO_CLAUDE: 'claude-sonnet-5'
+    MODELO_CLAUDE: 'claude-sonnet-5',
+    ESFORCO_CLAUDE: 'low',                // 'low' | 'medium' | 'high'
+    MAX_TOKENS_CLAUDE: '16000'
   };
 
   var props = PropertiesService.getScriptProperties();
@@ -108,7 +113,11 @@ function obterConfigMatching_() {
     turnstileAtivo: /^(sim|true|1)$/i.test(String(p.TURNSTILE_ATIVO || '').trim()),
     turnstileSecret: (p.TURNSTILE_SECRET || '').trim(),
     minDiasPrazo: isFinite(minDias) && minDias >= 0 ? minDias : CONFIG_MATCHING.MIN_DIAS_PRAZO_PADRAO,
-    modelo: (p.MODELO_CLAUDE || '').trim() || CONFIG_MATCHING.MODELO_PADRAO
+    modelo: (p.MODELO_CLAUDE || '').trim() || CONFIG_MATCHING.MODELO_PADRAO,
+    esforco: /^(low|medium|high|xhigh|max)$/.test(String(p.ESFORCO_CLAUDE || '').trim())
+      ? String(p.ESFORCO_CLAUDE).trim() : CONFIG_MATCHING.ESFORCO_PADRAO,
+    maxTokens: parseInt(p.MAX_TOKENS_CLAUDE, 10) >= 1000
+      ? parseInt(p.MAX_TOKENS_CLAUDE, 10) : CONFIG_MATCHING.MAX_TOKENS_PADRAO
   };
 
   if (!cfg.spreadsheetId) {

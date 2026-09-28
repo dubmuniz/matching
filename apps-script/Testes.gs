@@ -8,7 +8,8 @@
  *   - oportunidades sem financiador correspondente em Organizações;
  *   - linhas ignoradas/incompletas, IDs temporários ou duplicados, valores fora da lista.
  *
- * testarMatching() será adicionada na etapa 2.
+ * testarMatching(): roda o matching completo (planilha + Claude) com uma demanda de exemplo
+ *   e mostra no log os cards resultantes, o tempo e o consumo de tokens. Gasta créditos da API.
  */
 
 function diagnosticoBase() {
@@ -94,6 +95,117 @@ function diagnosticoBase() {
   log('');
   log('===== FIM =====');
   console.log(linhas.join('\n'));
+}
+
+/* ---------------- testarMatching ---------------- */
+
+// Demanda fictícia para teste (seção 12, etapa 2).
+var DEMANDA_EXEMPLO_ = {
+  nome: 'Pesquisador(a) de teste',
+  email: 'teste@fiocruz.br',
+  unidade: 'ILMD – Fiocruz Amazônia',
+  unidadeOutra: '',
+  titulo: 'Vigilância integrada de arboviroses com dados climáticos em municípios amazônicos',
+  resumo: 'O projeto propõe um sistema de vigilância integrada de dengue, chikungunya, Zika e Oropouche que combina ' +
+    'notificações do SUS, vigilância entomológica e dados climáticos (chuva, temperatura e nível dos rios) para ' +
+    'gerar alertas antecipados em municípios do Amazonas. Inclui painéis para as secretarias municipais de saúde, ' +
+    'modelos preditivos validados com séries históricas e formação de equipes locais para uso contínuo da ferramenta.',
+  problema: 'Surtos de arboviroses na Amazônia são detectados tarde, porque os dados clínicos, entomológicos e ' +
+    'climáticos estão dispersos e os municípios têm pouca capacidade analítica.',
+  objetivos: 'Integrar bases de dados de saúde e clima; desenvolver e validar modelos de alerta precoce; ' +
+    'implantar painéis em 10 municípios; capacitar 60 profissionais das vigilâncias municipais.',
+  areas: ['Arboviroses e vetores', 'Clima e saúde', 'Vigilância em saúde'],
+  abrangencia: 'Estado do Amazonas (10 municípios, incluindo áreas ribeirinhas e de fronteira com Colômbia e Peru)',
+  maturidade: 'Projeto estruturado',
+  valorEstimado: 'R$ 1–5 milhões',
+  horizonte: '6–12 meses',
+  parceiros: 'Colaboração informal com a London School of Hygiene & Tropical Medicine em modelagem climática.',
+  idiomas: ['Português', 'Inglês', 'Espanhol']
+};
+
+/**
+ * Roda o matching de ponta a ponta com a demanda de exemplo. GASTA CRÉDITOS DA API.
+ * Mostra no log: candidatos enviados, tempo, tokens, custo estimado e os cards.
+ */
+function testarMatching() {
+  var cfg = obterConfigMatching_();
+  var hoje = hojeSaoPaulo_();
+  var base = carregarBaseMatching_(cfg, hoje);
+  var candidatos = preselecionarCandidatos(DEMANDA_EXEMPLO_, base.candidatos, CONFIG_MATCHING.MAX_CANDIDATOS);
+  var financiadores = base.organizacoesParaIA;
+
+  var linhas = [];
+  var log = function (s) { linhas.push(s); };
+  log('===== TESTE DE MATCHING (' + hoje + ') =====');
+  log('Modelo: ' + cfg.modelo + ' | esforço: ' + cfg.esforco + ' | max_tokens: ' + cfg.maxTokens +
+      ' | prompt: ' + PROMPT_VERSAO);
+  log('Oportunidades enviadas: ' + candidatos.length + ' (de ' + base.candidatos.length + ' candidatas)' +
+      ' | financiadores enviados: ' + financiadores.length);
+  log('Tamanho da mensagem: ' + montarMensagemMatching(DEMANDA_EXEMPLO_, candidatos, financiadores).length + ' caracteres');
+
+  var inicio = Date.now();
+  var r;
+  try {
+    r = executarMatchingIA_(cfg, DEMANDA_EXEMPLO_, candidatos, financiadores);
+  } catch (e) {
+    console.log(linhas.join('\n'));
+    throw e;
+  }
+  var segundos = ((Date.now() - inicio) / 1000).toFixed(1);
+
+  var entrada = 0, saida = 0;
+  r.uso.forEach(function (u) { entrada += u.input_tokens || 0; saida += u.output_tokens || 0; });
+  log('Tempo: ' + segundos + ' s | tentativas: ' + r.tentativas +
+      ' | tokens de entrada: ' + entrada + ' | de saída (inclui raciocínio): ' + saida);
+  if (cfg.modelo === 'claude-sonnet-5') {
+    log('Custo estimado: US$ ' + ((entrada * 2 + saida * 10) / 1e6).toFixed(4) + ' (US$ 2 / US$ 10 por milhão de tokens)');
+  }
+
+  var res = r.resultado;
+  log('');
+  log('Resumo da demanda: ' + res.resumo_demanda);
+  log('Para melhorar o matching: ' + (res.lacunas_da_demanda.join(' | ') || '—'));
+
+  var porId = {};
+  candidatos.forEach(function (o) { porId[o.id] = o; });
+  log('');
+  log('--- OPORTUNIDADES (' + res.oportunidades.length + ') ---');
+  res.oportunidades.forEach(function (item) {
+    var o = porId[item.id];
+    log('');
+    log('[' + item.nota + ' · ' + seloTeste_(item.nota) + '] ' + o.edital + ' — ' + o.financiador + ' (' + o.id + ')');
+    log('  ' + o.prazo.texto + ' | Valores: ' + (o.valores || '—') + ' | Duração: ' + (o.duracao || '—'));
+    log('  Integridade: ' + o.integridade + ' | Via: ' + o.via + ' | Edital: ' + (o.linkEdital || '(sem link)'));
+    log('  Critérios: ' + JSON.stringify(item.criterios));
+    log('  Por que combina: ' + item.por_que_combina);
+    log('  Lacunas e riscos: ' + item.lacunas_e_riscos);
+    if (item.requisitos_criticos.length) log('  Requisitos críticos: ' + item.requisitos_criticos.join(' | '));
+    log('  Próximo passo: ' + item.proximo_passo);
+  });
+
+  var porNome = {};
+  financiadores.forEach(function (g) { porNome[g.organizacao] = g; });
+  log('');
+  log('--- FINANCIADORES (' + res.financiadores.length + ') ---');
+  res.financiadores.forEach(function (item) {
+    var g = porNome[item.organizacao];
+    log('');
+    log('[' + item.nota + ' · ' + seloTeste_(item.nota) + '] ' + g.organizacao + ' (' + (g.pais || 'país não informado') + ')');
+    log('  Integridade: ' + g.integridade + ' | Website: ' + (g.website || '(sem site)'));
+    log('  Por que combina: ' + item.por_que_combina);
+    log('  Como abordar: ' + item.como_abordar);
+  });
+
+  log('');
+  log('===== FIM =====');
+  console.log(linhas.join('\n'));
+}
+
+function seloTeste_(nota) {
+  if (nota >= 75) return 'Alta aderência';
+  if (nota >= 60) return 'Boa aderência';
+  if (nota >= 40) return 'Aderência parcial';
+  return 'Baixa aderência';
 }
 
 function listaOuNenhuma_(lista) {

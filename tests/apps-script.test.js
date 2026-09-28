@@ -67,16 +67,35 @@ function criarAba(nome, matriz, opcoes = {}) {
 
 let planilhaAtual;
 
-function criarContexto(abas) {
+// respostasApi: lista de { codigo, corpo } devolvidos em ordem pelo UrlFetchApp simulado.
+function criarContexto(abas, respostasApi = []) {
   planilhaAtual = {
     getSheetByName: (n) => abas[n] || null,
     getSpreadsheetTimeZone: () => 'America/Sao_Paulo',
     getSpreadsheetLocale: () => 'pt_BR'
   };
   const logs = [];
-  const props = { SPREADSHEET_ID: 'planilha-teste', MIN_DIAS_PRAZO: '21' };
+  const requisicoes = [];
+  const props = { SPREADSHEET_ID: 'planilha-teste', MIN_DIAS_PRAZO: '21', ANTHROPIC_API_KEY: 'chave-de-teste' };
   const ctx = {
-    console: { log: (s) => logs.push(String(s)), error: (s) => logs.push('ERRO ' + s) },
+    console: {
+      log: (s) => logs.push(String(s)),
+      warn: (s) => logs.push('AVISO ' + s),
+      error: (s) => logs.push('ERRO ' + s)
+    },
+    UrlFetchApp: {
+      fetch: (url, opcoes) => {
+        requisicoes.push({ url, opcoes, corpo: JSON.parse(opcoes.payload) });
+        const r = respostasApi.shift();
+        if (!r) throw new Error('sem resposta simulada');
+        if (r.excecao) throw new Error(r.excecao);
+        return {
+          getResponseCode: () => r.codigo,
+          getContentText: () => typeof r.corpo === 'string' ? r.corpo : JSON.stringify(r.corpo),
+          getHeaders: () => r.cabecalhos || {}
+        };
+      }
+    },
     SpreadsheetApp: { openById: () => planilhaAtual },
     PropertiesService: {
       getScriptProperties: () => ({
@@ -89,7 +108,8 @@ function criarContexto(abas) {
         const p = (n) => String(n).padStart(2, '0');
         if (fmt === 'yyyy-MM-dd') return '2026-09-25'; // "hoje" fixo
         return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
-      }
+      },
+      sleep: () => {}
     },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) }
   };
@@ -97,8 +117,37 @@ function criarContexto(abas) {
   for (const f of arquivosGs()) {
     vm.runInContext(fs.readFileSync(path.join(DIR, f), 'utf8'), ctx, { filename: f });
   }
-  return { ctx, logs };
+  return { ctx, logs, requisicoes };
 }
+
+// Resposta simulada da API: um bloco thinking (vazio) seguido do JSON no bloco text.
+function respostaClaude(json, extra = {}) {
+  return {
+    codigo: 200,
+    corpo: {
+      content: [
+        { type: 'thinking', thinking: '' },
+        { type: 'text', text: typeof json === 'string' ? json : JSON.stringify(json) }
+      ],
+      stop_reason: extra.stop_reason || 'end_turn',
+      usage: { input_tokens: 1000, output_tokens: 500 }
+    }
+  };
+}
+
+const RESULTADO_IA = {
+  resumo_demanda: 'Vigilância de arboviroses com dados climáticos.',
+  lacunas_da_demanda: ['Orçamento detalhado'],
+  oportunidades: [
+    { id: 'OPP-0001', nota: 82, criterios: { tematica: 38, elegibilidade: 20, porte: 12, maturidade: 7, viabilidade: 5 },
+      por_que_combina: 'Clima e saúde.', lacunas_e_riscos: 'Nenhuma.', requisitos_criticos: [], proximo_passo: 'Contatar.' },
+    { id: 'OPP-9999', nota: 90, criterios: {}, por_que_combina: 'inventado', lacunas_e_riscos: '', requisitos_criticos: [], proximo_passo: '' }
+  ],
+  financiadores: [
+    { organizacao: 'Wellcome Trust', nota: 70, por_que_combina: 'Clima.', como_abordar: 'E-mail.' },
+    { organizacao: 'Vedada Foundation', nota: 99, por_que_combina: 'x', como_abordar: 'x' }
+  ]
+};
 
 const CAB_OPP = ['Nome do parceiro', 'Nome do edital', 'Tema central', 'Resumo da chamada', 'Prazo', 'Valores',
   'Tempo de duração', 'Projeto FIOCRUZ com sinergia', 'Ponto focal no time do Escritório', 'Pesquisador parceiro',
@@ -186,4 +235,77 @@ test('gerarIdsOportunidades() preenche só os vazios', () => {
   ctx.gerarIdsOportunidades();
   const ids = abas.Oportunidades.matriz.slice(1).map(l => l[15]);
   assert.deepEqual(ids, ['OPP-0001', 'OPP-0002', '', 'OPP-0003', 'OPP-0004']);
+});
+
+test('testarMatching(): requisição correta, sem dados internos, e cards no log', () => {
+  const { ctx, logs, requisicoes } = criarContexto(montarPlanilha(), [respostaClaude(RESULTADO_IA)]);
+  ctx.testarMatching();
+
+  assert.equal(requisicoes.length, 1);
+  const { url, opcoes, corpo } = requisicoes[0];
+  assert.equal(url, 'https://api.anthropic.com/v1/messages');
+  assert.equal(opcoes.headers['anthropic-version'], '2023-06-01');
+  assert.equal(opcoes.headers['x-api-key'], 'chave-de-teste');
+  assert.equal(corpo.model, 'claude-sonnet-5');
+  assert.ok(!('temperature' in corpo), 'Sonnet 5 rejeita temperature');
+  assert.equal(corpo.output_config.format.type, 'json_schema');
+  assert.equal(corpo.system, ctx.SYSTEM_PROMPT_MATCHING);
+
+  const msg = corpo.messages[0].content;
+  // Vedados não vão para a IA; nome/e-mail do pesquisador e colunas internas também não.
+  for (const proibido of ['Vedada', 'Edital V', 'Pesquisador(a) de teste', 'teste@fiocruz.br',
+    'SEGREDO-PONTO-FOCAL', 'pessoa@exemplo.org', 'docs.google.com/interno', 'CONTATO-INTERNO', 'rua interna']) {
+    assert.ok(!msg.includes(proibido), `não deveria ir para a IA: ${proibido}`);
+  }
+  assert.match(msg, /<demanda>[\s\S]*<\/demanda>[\s\S]*<oportunidades>[\s\S]*<\/oportunidades>[\s\S]*<financiadores>/);
+  assert.match(msg, /"id":"OPP-0001"/);
+  assert.match(msg, /"status_prazo":"encerrado"/);
+
+  const saida = logs.join('\n');
+  assert.match(saida, /\[82 · Alta aderência\] Climate and Health — Wellcome Trust \(OPP-0001\)/);
+  assert.match(saida, /Último prazo conhecido: 01\/03\/2026/);         // prazo vem da planilha
+  assert.ok(!saida.includes('(OPP-9999)'), 'id inventado pela IA não pode virar card');
+  assert.match(saida, /AVISO Itens descartados na validação: .*OPP-9999/);
+  assert.ok(!/\[99 ·/.test(saida), 'financiador não enviado deve ser descartado');
+  assert.match(saida, /\[70 · Boa aderência\] Wellcome Trust \(UK\)/);
+});
+
+test('matching: repete uma vez se o JSON vier inválido e lê só blocos de texto', () => {
+  const { ctx, requisicoes } = criarContexto(montarPlanilha(), [
+    respostaClaude('isto não é JSON'),
+    respostaClaude('```json\n' + JSON.stringify(RESULTADO_IA) + '\n```')
+  ]);
+  ctx.testarMatching();
+  assert.equal(requisicoes.length, 2);
+  assert.match(requisicoes[1].corpo.messages[0].content, /Sua resposta anterior não era JSON válido\. Responda apenas com o JSON\.$/);
+});
+
+test('matching: erro após duas respostas inválidas', () => {
+  const { ctx } = criarContexto(montarPlanilha(), [respostaClaude('{'), respostaClaude('[]')]);
+  assert.throws(() => ctx.testarMatching(), /Resposta da IA inválida após 2 tentativas/);
+});
+
+test('matching: novas tentativas em 529 e falha de rede; 400 não repete', () => {
+  let { ctx, requisicoes } = criarContexto(montarPlanilha(), [
+    { codigo: 529, corpo: { error: { type: 'overloaded_error' } } },
+    { excecao: 'Timeout' },
+    respostaClaude(RESULTADO_IA)
+  ]);
+  ctx.testarMatching();
+  assert.equal(requisicoes.length, 3);
+
+  ({ ctx, requisicoes } = criarContexto(montarPlanilha(), [
+    { codigo: 400, corpo: { error: { type: 'invalid_request_error', message: 'bad' } } }
+  ]));
+  assert.throws(() => ctx.testarMatching(), /HTTP 400/);
+  assert.equal(requisicoes.length, 1);
+});
+
+test('matching: resposta cortada (max_tokens) conta como inválida', () => {
+  const { ctx, requisicoes } = criarContexto(montarPlanilha(), [
+    respostaClaude('{"resumo', { stop_reason: 'max_tokens' }),
+    respostaClaude(RESULTADO_IA)
+  ]);
+  ctx.testarMatching();
+  assert.equal(requisicoes.length, 2);
 });

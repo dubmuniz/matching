@@ -6,7 +6,7 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 ## Arquitetura (seção 3)
 - Frontend: HTML, CSS e JS puros em `docs/` (GitHub Pages, branch `main`, pasta `/docs`). Sem framework, sem build, **sem segredos**. `docs/config.js` contém só a URL do web app e a site key pública do Turnstile.
 - Backend: projeto Google Apps Script **standalone** em `apps-script/`. Acessa a planilha só por `SpreadsheetApp.openById(SPREADSHEET_ID)`.
-- IA: `https://api.anthropic.com/v1/messages`, modelo `claude-sonnet-5` (configurável em `Config.gs`), `anthropic-version: 2023-06-01`, uma única chamada por demanda. **Não enviar `temperature`**: o Sonnet 5 rejeita parâmetros de amostragem (HTTP 400). A resposta pode trazer blocos `thinking`; ler só os blocos `text`. Sem embeddings. Pré-seleção por termos só se houver mais de 40 candidatos.
+- IA: `https://api.anthropic.com/v1/messages`, modelo `claude-sonnet-5` (configurável em `Config.gs`), `anthropic-version: 2023-06-01`, uma única chamada por demanda. **Não enviar `temperature`**: o Sonnet 5 rejeita parâmetros de amostragem (HTTP 400). A resposta pode trazer blocos `thinking`; ler só os blocos `text`. Raciocínio adaptativo com `output_config.effort` (padrão `low`, propriedade `ESFORCO_CLAUDE`), `max_tokens` 16000 (propriedade `MAX_TOKENS_CLAUDE`; inclui o raciocínio) e saída estruturada (`output_config.format` com `SCHEMA_RESPOSTA_MATCHING`), sem dispensar a validação em `validarRespostaMatching()`. Sem embeddings. Pré-seleção por termos só se houver mais de 40 candidatos.
 - Frontend → backend: `POST` com `Content-Type: text/plain;charset=utf-8` e corpo JSON. Resposta via `ContentService` + `MimeType.JSON`.
 
 ## Script existente
