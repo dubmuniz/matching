@@ -29,7 +29,8 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 - Nome e e-mail do pesquisador nunca vão para a IA.
 - Texto do usuário vai delimitado em `<demanda>`. A saída da IA é validada contra os IDs e organizações enviados, notas limitadas a 0–100 e textos cortados em 400 caracteres.
 - Validação no navegador **e** no servidor (o servidor é a autoridade). Rejeitar campos desconhecidos. Corpo máximo de 20 KB.
-- Anti-abuso: honeypot; Turnstile (desligável por propriedade durante o protótipo); limite de taxa com `CacheService` + `LockService` (3 envios por e-mail a cada 24 h, 30 globais por hora).
+- Anti-abuso: honeypot; Turnstile (desligável por propriedade durante o protótipo); limite de taxa com `LockService` (3 envios por e-mail a cada 24 h, guardados em Propriedades do usuário com a chave = hash SHA-256 do e-mail, porque o `CacheService` só guarda por até 6 h; 30 globais por hora no `CacheService`).
+- Texto do usuário gravado na planilha passa por `protegerCelula()` (evita injeção de fórmulas).
 - Cópia por e-mail ao pesquisador só se o domínio estiver em `DOMINIOS_COPIA` (correspondência exata do domínio).
 - Frontend: texto do servidor só com `textContent`, nunca `innerHTML`. Links só com `http(s)`, `target="_blank"` e `rel="noopener noreferrer"`.
 - Todo texto do usuário ou da IA é escapado no e-mail HTML.

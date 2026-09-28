@@ -59,24 +59,45 @@ function criarAba(nome, matriz, opcoes = {}) {
         setValue: (v) => {
           while (matriz.length < linha) matriz.push([]);
           matriz[linha - 1][col - 1] = v;
+        },
+        setValues: (valores) => {
+          valores.forEach((l, i) => {
+            while (matriz.length < linha + i) matriz.push([]);
+            l.forEach((v, j) => { matriz[linha - 1 + i][col - 1 + j] = v; });
+          });
         }
       };
-    }
+    },
+    appendRow: (l) => { matriz.push([...l]); },
+    setFrozenRows: () => {}
   };
 }
 
 let planilhaAtual;
 
 // respostasApi: lista de { codigo, corpo } devolvidos em ordem pelo UrlFetchApp simulado.
-function criarContexto(abas, respostasApi = []) {
+function criarContexto(abas, respostasApi = [], opcoes = {}) {
   planilhaAtual = {
     getSheetByName: (n) => abas[n] || null,
+    insertSheet: (n) => { abas[n] = criarAba(n, []); return abas[n]; },
     getSpreadsheetTimeZone: () => 'America/Sao_Paulo',
     getSpreadsheetLocale: () => 'pt_BR'
   };
   const logs = [];
   const requisicoes = [];
-  const props = { SPREADSHEET_ID: 'planilha-teste', MIN_DIAS_PRAZO: '21', ANTHROPIC_API_KEY: 'chave-de-teste' };
+  const props = Object.assign({
+    SPREADSHEET_ID: 'planilha-teste', MIN_DIAS_PRAZO: '21', ANTHROPIC_API_KEY: 'chave-de-teste',
+    ESCRITORIO_EMAIL: 'escritorio@fiocruz.br', DOMINIOS_COPIA: 'fiocruz.br'
+  }, opcoes.props || {});
+  const propsUsuario = {};
+  const cache = {};
+  const emails = [];
+  const armazem = (obj) => ({
+    getProperties: () => ({ ...obj }),
+    getProperty: (k) => (k in obj ? obj[k] : null),
+    setProperty: (k, v) => { obj[k] = String(v); },
+    deleteProperty: (k) => { delete obj[k]; }
+  });
   const ctx = {
     console: {
       log: (s) => logs.push(String(s)),
@@ -85,7 +106,8 @@ function criarContexto(abas, respostasApi = []) {
     },
     UrlFetchApp: {
       fetch: (url, opcoes) => {
-        requisicoes.push({ url, opcoes, corpo: JSON.parse(opcoes.payload) });
+        const corpo = typeof opcoes.payload === 'string' ? JSON.parse(opcoes.payload) : opcoes.payload;
+        requisicoes.push({ url, opcoes, corpo });
         const r = respostasApi.shift();
         if (!r) throw new Error('sem resposta simulada');
         if (r.excecao) throw new Error(r.excecao);
@@ -98,18 +120,40 @@ function criarContexto(abas, respostasApi = []) {
     },
     SpreadsheetApp: { openById: () => planilhaAtual },
     PropertiesService: {
-      getScriptProperties: () => ({
-        getProperties: () => ({ ...props }),
-        setProperty: (k, v) => { props[k] = v; }
+      getScriptProperties: () => armazem(props),
+      getUserProperties: () => armazem(propsUsuario)
+    },
+    CacheService: {
+      getScriptCache: () => ({
+        get: (k) => (k in cache ? cache[k] : null),
+        put: (k, v) => { cache[k] = v; },
+        remove: (k) => { delete cache[k]; }
       })
+    },
+    MailApp: {
+      sendEmail: (m) => {
+        if (opcoes.falharEmail) throw new Error('cota de e-mail esgotada');
+        emails.push(m);
+      }
+    },
+    ContentService: {
+      MimeType: { JSON: 'application/json' },
+      createTextOutput: (t) => ({ conteudo: t, setMimeType(m) { this.mime = m; return this; } })
     },
     Utilities: {
       formatDate: (d, _tz, fmt) => {
         const p = (n) => String(n).padStart(2, '0');
         if (fmt === 'yyyy-MM-dd') return '2026-09-25'; // "hoje" fixo
+        if (fmt === 'yyyyMMdd') return '20260925';
         return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
       },
-      sleep: () => {}
+      sleep: () => {},
+      newBlob: (t) => ({ getBytes: () => Buffer.from(String(t), 'utf8') }),
+      DigestAlgorithm: { SHA_256: 'sha256' },
+      Charset: { UTF_8: 'utf8' },
+      computeDigest: (_alg, t) => [...require('node:crypto').createHash('sha256').update(t).digest()],
+      base64EncodeWebSafe: (b) => Buffer.from(b).toString('base64url'),
+      getUuid: () => require('node:crypto').randomUUID()
     },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) }
   };
@@ -117,7 +161,7 @@ function criarContexto(abas, respostasApi = []) {
   for (const f of arquivosGs()) {
     vm.runInContext(fs.readFileSync(path.join(DIR, f), 'utf8'), ctx, { filename: f });
   }
-  return { ctx, logs, requisicoes };
+  return { ctx, logs, requisicoes, emails, propsUsuario, cache };
 }
 
 // Resposta simulada da API: um bloco thinking (vazio) seguido do JSON no bloco text.
@@ -318,4 +362,194 @@ test('matching: resposta cortada (max_tokens) conta como inválida', () => {
   ]);
   ctx.testarMatching();
   assert.equal(requisicoes.length, 2);
+});
+
+// ---------------- Etapa 3: doPost ----------------
+
+function envioValido(extra = {}) {
+  return Object.assign({
+    nome: 'Maria Pesquisadora',
+    email: 'maria@fiocruz.br',
+    unidade: 'ILMD – Fiocruz Amazônia',
+    unidadeOutra: '',
+    titulo: 'Vigilância de arboviroses e clima',
+    resumo: 'R'.repeat(120),
+    problema: 'P'.repeat(60),
+    objetivos: 'O'.repeat(60),
+    areas: ['Arboviroses e vetores', 'Clima e saúde'],
+    abrangencia: 'Amazonas',
+    maturidade: 'Projeto estruturado',
+    valorEstimado: 'R$ 1–5 milhões',
+    horizonte: '6–12 meses',
+    parceiros: '',
+    idiomas: ['Português', 'Inglês'],
+    consentimento: true,
+    site: '',
+    turnstileToken: ''
+  }, extra);
+}
+
+function postar(ctx, corpo) {
+  const saida = ctx.doPost({ postData: { contents: typeof corpo === 'string' ? corpo : JSON.stringify(corpo) } });
+  assert.equal(saida.mime, 'application/json');
+  return JSON.parse(saida.conteudo);
+}
+
+test('doGet responde { ok: true }', () => {
+  const { ctx } = criarContexto(montarPlanilha());
+  assert.deepEqual(JSON.parse(ctx.doGet().conteudo), { ok: true });
+});
+
+test('doPost: envio válido grava em Demandas, envia e-mails e devolve só os campos dos cards', () => {
+  const abas = montarPlanilha();
+  const { ctx, emails, requisicoes } = criarContexto(abas, [respostaClaude(RESULTADO_IA)]);
+  const r = postar(ctx, envioValido());
+
+  assert.equal(r.ok, true);
+  assert.match(r.id_demanda, /^DEM-20260925-[A-Z0-9]{4}$/);
+  assert.equal(requisicoes.length, 1);
+
+  // Seções: OPP-0001 está encerrado com nota 82 → "monitorar"; financiador Wellcome 70.
+  const res = r.resultado;
+  assert.equal(res.abertas.length, 0);
+  assert.equal(res.monitorar.length, 1);
+  assert.equal(res.monitorar[0].id, 'OPP-0001');
+  assert.equal(res.monitorar[0].prazo_texto, 'Último prazo conhecido: 01/03/2026 — verifique o próximo ciclo');
+  assert.equal(res.monitorar[0].link_edital, 'https://wellcome.org/edital');
+  assert.equal(res.financiadores[0].organizacao, 'Wellcome Trust');
+  assert.equal(res.vazio, false);
+  const json = JSON.stringify(r);
+  for (const proibido of ['SEGREDO-PONTO-FOCAL', 'pessoa@exemplo.org', 'docs.google.com', 'CONTATO-INTERNO', 'Vedada', '"linha"']) {
+    assert.ok(!json.includes(proibido), `não deveria ir ao navegador: ${proibido}`);
+  }
+
+  // Aba Demandas criada com o cabeçalho e uma linha
+  const dem = abas.Demandas.matriz;
+  assert.equal(dem[0][1], 'ID demanda');
+  assert.equal(dem.length, 2);
+  assert.equal(dem[1][1], r.id_demanda);
+  assert.equal(dem[1][2], 'Maria Pesquisadora');
+  assert.equal(dem[1][18], 'matching-v1');
+  assert.equal(dem[1][19], 'Nova');
+  assert.match(dem[1][17], /^1\. \[82\] Climate and Health — Wellcome Trust \(OPP-0001\)/);
+
+  // E-mails: Escritório (com link da planilha) e cópia ao pesquisador (sem link)
+  assert.equal(emails.length, 2);
+  assert.equal(emails[0].to, 'escritorio@fiocruz.br');
+  assert.equal(emails[0].subject, '[Fioconecta] Nova demanda: Vigilância de arboviroses e clima — ILMD – Fiocruz Amazônia');
+  assert.equal(emails[0].replyTo, 'maria@fiocruz.br');
+  assert.match(emails[0].htmlBody, /docs\.google\.com\/spreadsheets\/d\/planilha-teste\/edit/);
+  assert.equal(emails[1].to, 'maria@fiocruz.br');
+  assert.ok(!emails[1].htmlBody.includes('docs.google.com'));
+});
+
+test('doPost: sem cópia para domínio fora de DOMINIOS_COPIA (nem subdomínio)', () => {
+  for (const email of ['alguem@gmail.com', 'alguem@ensp.fiocruz.br']) {
+    const { ctx, emails } = criarContexto(montarPlanilha(), [respostaClaude(RESULTADO_IA)]);
+    assert.equal(postar(ctx, envioValido({ email })).ok, true);
+    assert.deepEqual(emails.map(e => e.to), ['escritorio@fiocruz.br'], email);
+  }
+});
+
+test('doPost: texto do usuário é escapado no e-mail e não vira fórmula na planilha', () => {
+  const abas = montarPlanilha();
+  const { ctx, emails } = criarContexto(abas, [respostaClaude(RESULTADO_IA)]);
+  const r = postar(ctx, envioValido({
+    nome: '=HYPERLINK("http://x","clique")',
+    titulo: '<img src=x onerror=alert(1)> Projeto'
+  }));
+  assert.equal(r.ok, true);
+  assert.equal(abas.Demandas.matriz[1][2], `'=HYPERLINK("http://x","clique")`);
+  assert.ok(!emails[0].htmlBody.includes('<img'));
+  assert.match(emails[0].htmlBody, /&lt;img src=x onerror=alert\(1\)&gt; Projeto/);
+});
+
+test('doPost: entradas inválidas são rejeitadas antes de chamar a IA', () => {
+  const casos = [
+    ['', /Não foi possível ler/],
+    ['{quebrado', /Não foi possível ler/],
+    [JSON.stringify(envioValido({ resumo: 'x'.repeat(21000) })), /grande demais/],
+    [envioValido({ site: 'spam' }), /Não foi possível confirmar/],
+    [envioValido({ extra: 1 }), /Revise os campos/],
+    [envioValido({ email: 'invalido' }), /Revise os campos/],
+    [envioValido({ consentimento: 'sim' }), /Revise os campos/],
+    [[1, 2], /Revise os campos/]
+  ];
+  for (const [corpo, esperado] of casos) {
+    const { ctx, requisicoes, emails } = criarContexto(montarPlanilha());
+    const r = postar(ctx, corpo);
+    assert.equal(r.ok, false);
+    assert.match(r.erro, esperado);
+    assert.equal(requisicoes.length, 0);
+    assert.equal(emails.length, 0);
+  }
+  const { ctx } = criarContexto(montarPlanilha());
+  const r = postar(ctx, envioValido({ titulo: 'abc', areas: [] }));
+  assert.ok(r.campos.titulo && r.campos.areas);
+});
+
+test('doPost: limite de 3 envios por e-mail em 24 h', () => {
+  const respostas = Array.from({ length: 4 }, () => respostaClaude(RESULTADO_IA));
+  const { ctx, requisicoes, propsUsuario } = criarContexto(montarPlanilha(), respostas);
+  for (let i = 0; i < 3; i++) assert.equal(postar(ctx, envioValido({ email: 'MARIA@fiocruz.br' })).ok, true);
+  const r = postar(ctx, envioValido({ email: 'maria@fiocruz.br' }));
+  assert.equal(r.ok, false);
+  assert.match(r.erro, /limite de 3 envios/);
+  assert.equal(requisicoes.length, 3);
+  assert.ok(!JSON.stringify(propsUsuario).includes('maria'), 'o e-mail não é guardado em claro');
+  assert.equal(postar(ctx, envioValido({ email: 'outra@fiocruz.br' })).ok, true);
+});
+
+test('doPost: limite global de 30 envios por hora', () => {
+  const { ctx, cache } = criarContexto(montarPlanilha(), [respostaClaude(RESULTADO_IA)]);
+  cache.LIMITE_GLOBAL = JSON.stringify(Array.from({ length: 30 }, () => Date.now()));
+  const r = postar(ctx, envioValido());
+  assert.equal(r.ok, false);
+  assert.match(r.erro, /muitos envios/);
+});
+
+test('doPost: Turnstile ligado exige token válido', () => {
+  const props = { TURNSTILE_ATIVO: 'sim', TURNSTILE_SECRET: 'segredo' };
+  let { ctx, requisicoes } = criarContexto(montarPlanilha(), [{ codigo: 200, corpo: { success: false } }], { props });
+  let r = postar(ctx, envioValido({ turnstileToken: 'falso' }));
+  assert.match(r.erro, /Não foi possível confirmar/);
+  assert.equal(requisicoes.length, 1);
+
+  ({ ctx, requisicoes } = criarContexto(montarPlanilha(), [], { props }));
+  r = postar(ctx, envioValido({ turnstileToken: '' }));
+  assert.match(r.erro, /Não foi possível confirmar/);
+  assert.equal(requisicoes.length, 0);
+});
+
+test('doPost: falha da IA registra a demanda, avisa o Escritório e devolve mensagem amigável', () => {
+  const abas = montarPlanilha();
+  const { ctx, emails } = criarContexto(abas, [{ codigo: 400, corpo: { error: { message: 'x' } } }]);
+  const r = postar(ctx, envioValido());
+  assert.equal(r.ok, false);
+  assert.match(r.erro, /Sua demanda foi registrada/);
+  assert.match(r.id_demanda, /^DEM-/);
+  assert.ok(!/HTTP|400|stack/i.test(r.erro), 'sem detalhes técnicos para o usuário');
+  assert.match(abas.Demandas.matriz[1][16], /^ERRO NA IA/);
+  assert.match(emails[0].htmlBody, /análise por IA falhou/);
+});
+
+test('doPost: falha no e-mail não impede a resposta', () => {
+  const { ctx, logs } = criarContexto(montarPlanilha(), [respostaClaude(RESULTADO_IA)], { falharEmail: true });
+  const r = postar(ctx, envioValido());
+  assert.equal(r.ok, true);
+  assert.ok(logs.some(l => /Falha ao enviar e-mail/.test(l)));
+});
+
+test('doPost: erro inesperado devolve mensagem genérica, sem stack trace', () => {
+  const { ctx } = criarContexto(montarPlanilha(), [], { props: { SPREADSHEET_ID: '' } });
+  const r = postar(ctx, envioValido());
+  assert.deepEqual(r, { ok: false, erro: 'Ocorreu um erro inesperado. Tente novamente em alguns minutos.' });
+});
+
+test('testarValidacao(): todas as entradas inválidas são rejeitadas', () => {
+  const { ctx, logs } = criarContexto(montarPlanilha());
+  ctx.testarValidacao();
+  const saida = logs.join('\n');
+  assert.ok(!saida.includes('ACEITO'), saida);
+  assert.equal((saida.match(/✓ rejeitado/g) || []).length, 10);
 });

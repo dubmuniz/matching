@@ -10,7 +10,73 @@
  *
  * testarMatching(): roda o matching completo (planilha + Claude) com uma demanda de exemplo
  *   e mostra no log os cards resultantes, o tempo e o consumo de tokens. Gasta créditos da API.
+ *
+ * testarValidacao(): envia ao doPost entradas inválidas e mostra as rejeições. Não gasta créditos.
+ *
+ * testarEnvioCompleto(): simula um envio real do formulário pelo doPost (grava na aba Demandas,
+ *   envia o e-mail ao Escritório e, se o domínio permitir, a cópia). Usa ESCRITORIO_EMAIL como
+ *   e-mail do "pesquisador". Gasta créditos da API e conta no limite de 3 envios por e-mail/24 h
+ *   (use limparLimitesDeTaxa() para zerar durante os testes).
  */
+
+/** Simula o evento que o Apps Script entrega ao doPost. */
+function eventoPost_(corpo) {
+  return { postData: { contents: typeof corpo === 'string' ? corpo : JSON.stringify(corpo), type: 'text/plain' } };
+}
+
+function envioValidoDeExemplo_(email) {
+  var d = JSON.parse(JSON.stringify(DEMANDA_EXEMPLO_));
+  d.email = email;
+  d.consentimento = true;
+  d.site = '';
+  d.turnstileToken = '';
+  return d;
+}
+
+function testarValidacao() {
+  var base = envioValidoDeExemplo_('teste-validacao@exemplo.org');
+  var casos = [
+    ['corpo vazio', ''],
+    ['JSON inválido', '{nome:'],
+    ['corpo acima de 20 KB', JSON.stringify(Object.assign({}, base, { resumo: 'x'.repeat(21000) }))],
+    ['honeypot preenchido', Object.assign({}, base, { site: 'http://spam.example' })],
+    ['campo desconhecido', Object.assign({}, base, { admin: true })],
+    ['e-mail inválido', Object.assign({}, base, { email: 'sem-arroba' })],
+    ['resumo curto', Object.assign({}, base, { resumo: 'curto' })],
+    ['unidade fora da lista', Object.assign({}, base, { unidade: 'Unidade X' })],
+    ['4 áreas temáticas', Object.assign({}, base, { areas: AREAS_TEMATICAS.slice(0, 4) })],
+    ['sem consentimento', Object.assign({}, base, { consentimento: false })]
+  ];
+  var linhas = ['===== TESTE DE VALIDAÇÃO (sem custo) ====='];
+  casos.forEach(function (c) {
+    var r = processarEnvio_(eventoPost_(c[1]));
+    linhas.push((r.ok ? '✗ ACEITO (erro!) ' : '✓ rejeitado ') + '— ' + c[0] + ': ' + r.erro +
+      (r.campos ? ' ' + JSON.stringify(r.campos) : ''));
+  });
+  linhas.push('===== FIM =====');
+  imprimirEmBlocos_(linhas);
+}
+
+function testarEnvioCompleto() {
+  var cfg = obterConfigMatching_();
+  if (!cfg.escritorioEmail) throw new Error('Configure ESCRITORIO_EMAIL antes deste teste.');
+  var inicio = Date.now();
+  var r = processarEnvio_(eventoPost_(envioValidoDeExemplo_(cfg.escritorioEmail)));
+  var linhas = ['===== TESTE DE ENVIO COMPLETO =====',
+    'Tempo: ' + ((Date.now() - inicio) / 1000).toFixed(1) + ' s',
+    'ok: ' + r.ok + (r.erro ? ' | erro: ' + r.erro : ''),
+    'ID da demanda: ' + (r.id_demanda || '—')];
+  if (r.ok) {
+    var res = r.resultado;
+    linhas.push('Seções: abertas=' + res.abertas.length + ', monitorar=' + res.monitorar.length +
+      ', financiadores=' + res.financiadores.length + (res.vazio ? ' (vazio)' : ''));
+    linhas.push('Top 3:\n' + top3Texto(res));
+    linhas.push('Resposta enviada ao navegador (' + JSON.stringify(r).length + ' caracteres).');
+  }
+  linhas.push('Confira: nova linha na aba ' + CONFIG_MATCHING.ABA_DEMANDAS + ' e e-mail em ' + cfg.escritorioEmail + '.');
+  linhas.push('===== FIM =====');
+  imprimirEmBlocos_(linhas);
+}
 
 function diagnosticoBase() {
   var cfg = obterConfigMatching_();
@@ -173,7 +239,7 @@ function testarMatching() {
   res.oportunidades.forEach(function (item) {
     var o = porId[item.id];
     log('');
-    log('[' + item.nota + ' · ' + seloTeste_(item.nota) + '] ' + o.edital + ' — ' + o.financiador + ' (' + o.id + ')');
+    log('[' + item.nota + ' · ' + seloAderencia(item.nota) + '] ' + o.edital + ' — ' + o.financiador + ' (' + o.id + ')');
     log('  ' + o.prazo.texto + ' | Valores: ' + (o.valores || '—') + ' | Duração: ' + (o.duracao || '—'));
     log('  Integridade: ' + o.integridade + ' | Via: ' + o.via + ' | Edital: ' + (o.linkEdital || '(sem link)'));
     log('  Critérios: ' + JSON.stringify(item.criterios));
@@ -190,7 +256,7 @@ function testarMatching() {
   res.financiadores.forEach(function (item) {
     var g = porNome[item.organizacao];
     log('');
-    log('[' + item.nota + ' · ' + seloTeste_(item.nota) + '] ' + g.organizacao + ' (' + (g.pais || 'país não informado') + ')');
+    log('[' + item.nota + ' · ' + seloAderencia(item.nota) + '] ' + g.organizacao + ' (' + (g.pais || 'país não informado') + ')');
     log('  Integridade: ' + g.integridade + ' | Website: ' + (g.website || '(sem site)'));
     log('  Por que combina: ' + item.por_que_combina);
     log('  Como abordar: ' + item.como_abordar);
@@ -201,12 +267,6 @@ function testarMatching() {
   imprimirEmBlocos_(linhas);
 }
 
-function seloTeste_(nota) {
-  if (nota >= 75) return 'Alta aderência';
-  if (nota >= 60) return 'Boa aderência';
-  if (nota >= 40) return 'Aderência parcial';
-  return 'Baixa aderência';
-}
 
 var TAMANHO_BLOCO_LOG_ = 6000; // o Apps Script corta cada console.log em ~8 KB
 
