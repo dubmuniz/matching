@@ -331,17 +331,24 @@
       credentials: 'omit',
       signal: controle ? controle.signal : undefined
     }).then(function (res) {
-      return res.json();
-    }).then(function (json) {
-      if (!json || typeof json !== 'object' || typeof json.ok !== 'boolean') throw new Error('resposta inesperada');
-      return json;
+      return res.text().then(function (texto) {
+        var json;
+        try { json = JSON.parse(texto); } catch (e) { json = null; }
+        if (!json || typeof json !== 'object' || typeof json.ok !== 'boolean') {
+          // Ex.: página de login ou de erro do Google no lugar do JSON (implantação sem acesso "Qualquer pessoa").
+          console.error('Resposta não-JSON do serviço (HTTP ' + res.status + '):', texto.slice(0, 500));
+          return { ok: false, erro: 'O serviço respondeu num formato inesperado (código R2, HTTP ' + res.status + ').' };
+        }
+        return json;
+      });
     }).catch(function (e) {
       var tempo = e && e.name === 'AbortError';
+      console.error('Falha de comunicação com o serviço:', e);
       return {
         ok: false,
         erro: tempo
           ? 'A análise demorou mais que o esperado. Tente novamente em alguns minutos.'
-          : 'Não foi possível falar com o serviço. Verifique sua conexão e tente novamente.'
+          : 'Não foi possível falar com o serviço (código R1). Verifique sua conexão e tente novamente.'
       };
     }).then(function (r) {
       if (relogio) clearTimeout(relogio);
@@ -392,13 +399,30 @@
       botao.disabled = false;
       form.removeAttribute('aria-busy');
       reiniciarTurnstile();
+      var protocolo = r.id_demanda ? ' Protocolo: ' + r.id_demanda + '.' : '';
       if (r.ok && r.resultado) {
-        mostrarResultado(r);
+        try {
+          mostrarResultado(r);
+        } catch (e) {
+          console.error('Falha ao exibir o resultado:', e, r);
+          $('resultados').hidden = true;
+          mostrarAvisoGeral('Sua demanda foi recebida, mas não foi possível exibir o resultado nesta página (código P2).' +
+            protocolo + ' O Escritório recebeu os dados por e-mail.');
+        }
       } else if (r.campos) {
         mostrarErros(r.campos, r.erro);
+      } else if (r.erro) {
+        mostrarAvisoGeral(r.erro + protocolo);
       } else {
-        mostrarAvisoGeral((r.erro || 'Ocorreu um erro inesperado.') + (r.id_demanda ? ' Protocolo: ' + r.id_demanda + '.' : ''));
+        console.error('Resposta inesperada do serviço:', r);
+        mostrarAvisoGeral('O serviço respondeu num formato inesperado (código P1).' + protocolo);
       }
+    }).catch(function (e) {
+      console.error('Falha no envio:', e);
+      $('carregando').hidden = true;
+      botao.disabled = false;
+      form.removeAttribute('aria-busy');
+      mostrarAvisoGeral('Ocorreu um erro na página (código P3). Tente novamente.');
     });
   }
 

@@ -30,9 +30,38 @@ function doPost(e) {
   try {
     return respostaJson_(processarEnvio_(e));
   } catch (err) {
-    console.error('doPost: erro inesperado: ' + (err && err.stack ? err.stack : err));
-    return respostaJson_({ ok: false, erro: MENSAGENS_ERRO.inesperado });
+    var ref = registrarErro_('doPost: erro inesperado', err);
+    return respostaJson_({ ok: false, erro: MENSAGENS_ERRO.inesperado + ' (ref. ' + ref + ')' });
   }
+}
+
+var CHAVE_ULTIMOS_ERROS_ = 'ULTIMOS_ERROS';
+var MAX_ERROS_GUARDADOS_ = 10;
+
+/**
+ * Registra um erro no console e guarda os últimos erros nas Propriedades do script,
+ * para consulta com verUltimosErros() (os registros de execução do app da web nem
+ * sempre ficam visíveis no painel). Nunca guarda dados do formulário.
+ * @return {string} código de referência curto, mostrado ao usuário
+ */
+function registrarErro_(contexto, err) {
+  var ref = Utilities.getUuid().slice(0, 8).toUpperCase();
+  var detalhe = String(err && err.stack ? err.stack : err).slice(0, 1500);
+  console.error('[' + ref + '] ' + contexto + ': ' + detalhe);
+  try {
+    var props = PropertiesService.getScriptProperties();
+    var lista = lerJson_(props.getProperty(CHAVE_ULTIMOS_ERROS_));
+    lista.unshift({
+      quando: Utilities.formatDate(new Date(), CONFIG_MATCHING.FUSO, 'dd/MM/yyyy HH:mm:ss'),
+      ref: ref,
+      contexto: contexto,
+      detalhe: detalhe
+    });
+    props.setProperty(CHAVE_ULTIMOS_ERROS_, JSON.stringify(lista.slice(0, MAX_ERROS_GUARDADOS_)));
+  } catch (e) {
+    console.error('Não foi possível guardar o erro: ' + e);
+  }
+  return ref;
 }
 
 function respostaJson_(obj) {
@@ -85,7 +114,7 @@ function processarEnvio_(e) {
     resultado = montarResultado(ia.resultado, candidatos, base.organizacoesParaIA);
   } catch (err) {
     erroIA = String(err && err.message ? err.message : err).slice(0, 500);
-    console.error('Matching: falha na IA: ' + erroIA);
+    registrarErro_('Matching: falha na IA', err);
   }
 
   // 9. Registro e e-mail: falhas aqui não impedem a resposta
@@ -99,12 +128,12 @@ function processarEnvio_(e) {
     registrarDemanda_(ss, montarLinhaDemanda(
       Utilities.formatDate(agora, CONFIG_MATCHING.FUSO, 'dd/MM/yyyy HH:mm:ss'), idDemanda, demanda, resultado, erroIA));
   } catch (err) {
-    console.error('Falha ao gravar a demanda ' + idDemanda + ': ' + (err && err.stack ? err.stack : err));
+    registrarErro_('Falha ao gravar a demanda ' + idDemanda, err);
   }
   try {
     enviarEmails_(cfg, demanda, idDemanda, resultado, erroIA);
   } catch (err) {
-    console.error('Falha ao enviar e-mail da demanda ' + idDemanda + ': ' + (err && err.stack ? err.stack : err));
+    registrarErro_('Falha ao enviar e-mail da demanda ' + idDemanda, err);
   }
 
   // 10. Resposta

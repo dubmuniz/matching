@@ -19,6 +19,18 @@
  *   (use limparLimitesDeTaxa() para zerar durante os testes).
  */
 
+/**
+ * Mostra no log os últimos erros do app da web (guardados por registrarErro_ em Codigo.gs),
+ * com o código de referência que o usuário vê na página.
+ */
+function verUltimosErros() {
+  var lista = lerJson_(PropertiesService.getScriptProperties().getProperty(CHAVE_ULTIMOS_ERROS_));
+  if (!lista.length) { console.log('Nenhum erro registrado.'); return; }
+  imprimirEmBlocos_(lista.map(function (e) {
+    return e.quando + ' [ref. ' + e.ref + '] ' + e.contexto + '\n' + e.detalhe + '\n';
+  }));
+}
+
 /** Simula o evento que o Apps Script entrega ao doPost. */
 function eventoPost_(corpo) {
   return { postData: { contents: typeof corpo === 'string' ? corpo : JSON.stringify(corpo), type: 'text/plain' } };
