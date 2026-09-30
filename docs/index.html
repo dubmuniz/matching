@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>Fioconecta · Matching de Oportunidades</title>
+  <meta name="description" content="Apresente seu projeto e receba sugestões de editais e financiadores aderentes, a partir da base curada pelo Escritório de Captação da Fiocruz.">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="pular" href="#conteudo">Pular para o conteúdo</a>
+
+  <header class="topo">
+    <div class="topo-interno">
+      <div class="logo-reservado" role="img" aria-label="Espaço reservado para o logotipo">Logo</div>
+      <div>
+        <p class="sobretitulo">Escritório de Captação de Recursos · Presidência da Fiocruz</p>
+        <h1>Fioconecta · Matching de Oportunidades</h1>
+      </div>
+    </div>
+  </header>
+
+  <main id="conteudo" class="conteudo">
+    <section class="intro" aria-labelledby="titulo-intro">
+      <h2 id="titulo-intro" class="visualmente-oculto">Como funciona</h2>
+      <p>Descreva o seu projeto. Vamos compará-lo com a base de editais e financiadores mantida pelo Escritório de Captação e mostrar as oportunidades mais aderentes, com a justificativa de cada sugestão. O Escritório recebe a sua demanda e entrará em contato.</p>
+      <p class="nota">Campos marcados com <span class="obrigatorio" aria-hidden="true">*</span><span class="visualmente-oculto">asterisco</span> são obrigatórios. A análise leva de 20 a 60 segundos.</p>
+    </section>
+
+    <noscript><p class="aviso-erro">Esta página precisa de JavaScript para funcionar.</p></noscript>
+
+    <form id="form-demanda" novalidate aria-describedby="titulo-intro">
+      <div id="resumo-erros" class="resumo-erros" role="alert" tabindex="-1" hidden></div>
+
+      <fieldset class="bloco">
+        <legend>Sobre você</legend>
+
+        <div class="campo">
+          <label for="nome">Nome do pesquisador <span class="obrigatorio" aria-hidden="true">*</span></label>
+          <input id="nome" name="nome" type="text" autocomplete="name" required maxlength="120"
+                 aria-describedby="nome-erro">
+          <p id="nome-erro" class="erro" hidden></p>
+        </div>
+
+        <div class="campo">
+          <label for="email">E-mail institucional <span class="obrigatorio" aria-hidden="true">*</span></label>
+          <input id="email" name="email" type="email" autocomplete="email" required maxlength="254"
+                 aria-describedby="email-ajuda email-erro">
+          <p id="email-ajuda" class="ajuda">Endereços @fiocruz.br recebem uma cópia do resultado por e-mail.</p>
+          <p id="email-erro" class="erro" hidden></p>
+        </div>
+
+        <div class="campo">
+          <label for="unidade">Unidade Fiocruz <span class="obrigatorio" aria-hidden="true">*</span></label>
+          <select id="unidade" name="unidade" required aria-describedby="unidade-erro">
+            <option value="">Selecione…</option>
+          </select>
+          <p id="unidade-erro" class="erro" hidden></p>
+        </div>
+
+        <div class="campo" id="campo-unidadeOutra" hidden>
+          <label for="unidadeOutra">Nome da unidade <span class="obrigatorio" aria-hidden="true">*</span></label>
+          <input id="unidadeOutra" name="unidadeOutra" type="text" maxlength="120" aria-describedby="unidadeOutra-erro">
+          <p id="unidadeOutra-erro" class="erro" hidden></p>
+        </div>
+      </fieldset>
+
+      <fieldset class="bloco">
+        <legend>Sobre o projeto</legend>
+
+        <div class="campo">
+          <label for="titulo">Título do projeto <span class="obrigatorio" aria-hidden="true">*</span></label>
+          <input id="titulo" name="titulo" type="text" required maxlength="200" data-contador
+                 aria-describedby="titulo-contador titulo-erro">
+          <p id="titulo-contador" class="contador" aria-live="off"></p>
+          <p id="titulo-erro" class="erro" hidden></p>
+        </div>
+
+        <div class="campo">
+          <label for="resumo">Resumo <span class="obrigatorio" aria-hidden="true">*</span></label>
+          <textarea id="resumo" name="resumo" rows="6" required maxlength="1500" data-contador
+                    aria-describedby="resumo-ajuda resumo-contador resumo-erro"></textarea>
+          <p id="resumo-ajuda" class="ajuda">O que o projeto faz, onde e com quem. Entre 100 e 1.500 caracteres.</p>
+          <p id="resumo-contador" class="contador" aria-live="off"></p>
+          <p id="resumo-erro" class="erro" hidden></p>
+        </div>
+
+        <div class="campo">
+          <label for="problema">Problema ou necessidade que o projeto responde <span class="obrigatorio" aria-hidden="true">*</span></label>
+          <textarea id="problema" name="problema" rows="4" required maxlength="1000" data-contador
+                    aria-describedby="problema-contador problema-erro"></textarea>
+          <p id="problema-contador" class="contador" aria-live="off"></p>
+          <p id="problema-erro" class="erro" hidden></p>
+        </div>
+
+        <div class="campo">
+          <label for="objetivos">Objetivos principais <span class="obrigatorio" aria-hidden="true">*</span></label>
+          <textarea id="objetivos" name="objetivos" rows="4" required maxlength="1000" data-contador
+                    aria-describedby="objetivos-contador objetivos-erro"></textarea>
+          <p id="objetivos-contador" class="contador" aria-live="off"></p>
+          <p id="objetivos-erro" class="erro" hidden></p>
+        </div>
+
+        <fieldset class="campo grupo" id="grupo-areas" aria-describedby="areas-ajuda areas-erro">
+          <legend>Áreas temáticas <span class="obrigatorio" aria-hidden="true">*</span></legend>
+          <p id="areas-ajuda" class="ajuda">Escolha de 1 a 3. <span id="areas-contagem" aria-live="polite"></span></p>
+          <div class="opcoes opcoes-colunas" id="opcoes-areas"></div>
+          <p id="areas-erro" class="erro" hidden></p>
+        </fieldset>
+
+        <div class="campo">
+          <label for="abrangencia">Abrangência geográfica <span class="obrigatorio" aria-hidden="true">*</span></label>
+          <input id="abrangencia" name="abrangencia" type="text" required maxlength="300" data-contador
+                 aria-describedby="abrangencia-ajuda abrangencia-contador abrangencia-erro">
+          <p id="abrangencia-ajuda" class="ajuda">Ex.: municípios do Amazonas; Brasil e países da América Latina.</p>
+          <p id="abrangencia-contador" class="contador" aria-live="off"></p>
+          <p id="abrangencia-erro" class="erro" hidden></p>
+        </div>
+
+        <fieldset class="campo grupo" aria-describedby="maturidade-erro">
+          <legend>Estágio de maturidade <span class="obrigatorio" aria-hidden="true">*</span></legend>
+          <div class="opcoes" id="opcoes-maturidade"></div>
+          <p id="maturidade-erro" class="erro" hidden></p>
+        </fieldset>
+
+        <fieldset class="campo grupo" aria-describedby="valorEstimado-erro">
+          <legend>Valor estimado necessário <span class="obrigatorio" aria-hidden="true">*</span></legend>
+          <div class="opcoes" id="opcoes-valorEstimado"></div>
+          <p id="valorEstimado-erro" class="erro" hidden></p>
+        </fieldset>
+
+        <fieldset class="campo grupo" aria-describedby="horizonte-erro">
+          <legend>Horizonte de início desejado <span class="obrigatorio" aria-hidden="true">*</span></legend>
+          <div class="opcoes" id="opcoes-horizonte"></div>
+          <p id="horizonte-erro" class="erro" hidden></p>
+        </fieldset>
+
+        <div class="campo">
+          <label for="parceiros">Parceiros internacionais já envolvidos <span class="opcional">(opcional)</span></label>
+          <textarea id="parceiros" name="parceiros" rows="3" maxlength="500" data-contador
+                    aria-describedby="parceiros-contador parceiros-erro"></textarea>
+          <p id="parceiros-contador" class="contador" aria-live="off"></p>
+          <p id="parceiros-erro" class="erro" hidden></p>
+        </div>
+
+        <fieldset class="campo grupo" aria-describedby="idiomas-erro">
+          <legend>Idiomas em que a equipe pode submeter <span class="obrigatorio" aria-hidden="true">*</span></legend>
+          <div class="opcoes opcoes-linha" id="opcoes-idiomas"></div>
+          <p id="idiomas-erro" class="erro" hidden></p>
+        </fieldset>
+      </fieldset>
+
+      <!-- Campo invisível contra robôs: pessoas não o veem nem o preenchem. -->
+      <div class="armadilha" aria-hidden="true">
+        <label for="site">Não preencha este campo</label>
+        <input id="site" name="site" type="text" tabindex="-1" autocomplete="off">
+      </div>
+
+      <div class="campo consentimento">
+        <input id="consentimento" name="consentimento" type="checkbox" required aria-describedby="consentimento-erro">
+        <label for="consentimento">Autorizo o uso destas informações pelo Escritório de Captação da Fiocruz para análise de oportunidades de financiamento. O texto do projeto (sem meus dados de contato) é processado por um serviço de IA externo para gerar as sugestões.</label>
+        <p id="consentimento-erro" class="erro" hidden></p>
+      </div>
+
+      <div id="turnstile" class="turnstile"></div>
+
+      <div class="acoes">
+        <button type="submit" id="botao-enviar" class="botao">Encontrar oportunidades</button>
+      </div>
+    </form>
+
+    <div id="carregando" class="carregando" hidden>
+      <div class="girando" aria-hidden="true"></div>
+      <p role="status">Analisando a aderência do seu projeto…</p>
+    </div>
+
+    <div id="aviso-geral" class="aviso-erro" role="alert" tabindex="-1" hidden></div>
+
+    <section id="resultados" class="resultados" aria-labelledby="titulo-resultados" hidden>
+      <h2 id="titulo-resultados" tabindex="-1">Resultado do matching</h2>
+      <p id="protocolo" class="protocolo"></p>
+      <div id="resumo-demanda"></div>
+      <div id="lista-resultados"></div>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <p>Sugestões geradas com apoio de IA a partir da base curada pelo Escritório de Captação. Não constituem decisão institucional. O Escritório entrará em contato.</p>
+  </footer>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

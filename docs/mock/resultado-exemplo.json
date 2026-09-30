@@ -1,0 +1,117 @@
+{
+  "ok": true,
+  "id_demanda": "DEM-20260930-EXMP",
+  "resultado": {
+    "resumo_demanda": "Sistema de vigilância integrada de arboviroses com dados climáticos e alertas precoces para municípios do Amazonas (EXEMPLO FICTÍCIO).",
+    "lacunas_da_demanda": [
+      "Não há parceiros formais no exterior; vários editais exigem instituição coexecutora estrangeira.",
+      "Falta informar a contrapartida institucional disponível.",
+      "Falta indicar aprovação ética e acordo de uso de dados do SUS.",
+      "Faltam indicadores de resultado e plano de sustentabilidade após o financiamento."
+    ],
+    "abertas": [
+      {
+        "tipo": "oportunidade",
+        "id": "OPP-9001",
+        "financiador": "Financiador Exemplo A",
+        "edital": "Chamada contínua de clima e saúde (exemplo)",
+        "nota": 81,
+        "selo": "Alta aderência",
+        "prazo_status": "continuo",
+        "prazo_texto": "Fluxo contínuo",
+        "valores": "US$ 500.000 a US$ 2.000.000",
+        "duracao": "24 a 48 meses",
+        "por_que_combina": "Apoia sistemas de alerta precoce que integram dados climáticos e de saúde em países de renda média, exatamente o foco da demanda.",
+        "lacunas_e_riscos": "Exige parceiro de pesquisa no país do financiador; a demanda ainda não tem acordo formal.",
+        "requisitos_criticos": ["Parceiro coexecutor no país do financiador", "Proposta em inglês"],
+        "proximo_passo": "Formalizar a colaboração com a instituição parceira e enviar a nota conceitual.",
+        "criterios": { "tematica": 38, "elegibilidade": 18, "porte": 12, "maturidade": 7, "viabilidade": 6 },
+        "integridade": "Permitido",
+        "integridade_aviso": false,
+        "via_governanca": "Captação direta",
+        "link_edital": "https://example.org/edital-a"
+      },
+      {
+        "tipo": "oportunidade",
+        "id": "OPP-9002",
+        "financiador": "Financiador Exemplo B",
+        "edital": "Programa de vigilância em saúde na Amazônia (exemplo)",
+        "nota": 66,
+        "selo": "Boa aderência",
+        "prazo_status": "prazo_curto",
+        "prazo_texto": "Prazo curto: 14/10/2026",
+        "valores": "R$ 1.500.000 (€ 250.000)",
+        "duracao": "até 36 meses",
+        "por_que_combina": "Financia vigilância de doenças transmitidas por vetores na região amazônica, com ênfase em capacidade local.",
+        "lacunas_e_riscos": "O prazo é curto e a proposta exige carta de apoio das secretarias municipais.",
+        "requisitos_criticos": ["Cartas de apoio das secretarias municipais de saúde"],
+        "proximo_passo": "Confirmar com o Escritório se há tempo hábil para as cartas de apoio.",
+        "criterios": { "tematica": 34, "elegibilidade": 16, "porte": 8, "maturidade": 5, "viabilidade": 3 },
+        "integridade": "Não avaliado",
+        "integridade_aviso": true,
+        "via_governanca": "A definir",
+        "link_edital": "https://example.org/edital-b"
+      },
+      {
+        "tipo": "oportunidade",
+        "id": "OPP-9003",
+        "financiador": "Financiador Exemplo C",
+        "edital": "Rodadas anuais de inovação em saúde digital (exemplo)",
+        "nota": 52,
+        "selo": "Aderência parcial",
+        "prazo_status": "ciclos",
+        "prazo_texto": "Ciclos recorrentes: March 1 • July 1 • October 1",
+        "valores": "US$ 100.000",
+        "duracao": "12 meses",
+        "por_que_combina": "Os painéis de dados e os modelos preditivos podem ser apresentados como inovação em saúde digital.",
+        "lacunas_e_riscos": "O valor é bem menor que o estimado; serviria para um componente do projeto.",
+        "requisitos_criticos": [],
+        "proximo_passo": "Avaliar uma proposta menor, focada no painel para os municípios.",
+        "criterios": { "tematica": 24, "elegibilidade": 14, "porte": 4, "maturidade": 6, "viabilidade": 4 },
+        "integridade": "Análise reforçada",
+        "integridade_aviso": true,
+        "via_governanca": "Orientação institucional",
+        "link_edital": ""
+      }
+    ],
+    "monitorar": [
+      {
+        "tipo": "oportunidade",
+        "id": "OPP-9004",
+        "financiador": "Financiador Exemplo D",
+        "edital": "Prêmios de impacto climático em saúde (exemplo)",
+        "nota": 84,
+        "selo": "Alta aderência",
+        "prazo_status": "encerrado",
+        "prazo_texto": "Último prazo conhecido: 01/03/2026 — verifique o próximo ciclo",
+        "valores": "£ 1.000.000",
+        "duracao": "até 60 meses",
+        "por_que_combina": "Edital anual focado em evidências sobre impactos do clima na saúde, com prioridade para arboviroses.",
+        "lacunas_e_riscos": "O ciclo de 2026 já fechou; o próximo deve abrir no início de 2027.",
+        "requisitos_criticos": ["Equipe multidisciplinar clima-saúde"],
+        "proximo_passo": "Preparar a proposta com antecedência para o próximo ciclo.",
+        "criterios": { "tematica": 39, "elegibilidade": 20, "porte": 11, "maturidade": 8, "viabilidade": 6 },
+        "integridade": "Permitido",
+        "integridade_aviso": false,
+        "via_governanca": "Captação direta",
+        "link_edital": "https://example.org/edital-d"
+      }
+    ],
+    "financiadores": [
+      {
+        "tipo": "financiador",
+        "organizacao": "Fundação Exemplo E",
+        "nota": 72,
+        "selo": "Boa aderência",
+        "pais": "França",
+        "por_que_combina": "Prioriza doenças infecciosas e fortalecimento de laboratórios em países de renda média.",
+        "como_abordar": "Contato institucional pela Presidência, apresentando o projeto como parte da agenda de vigilância.",
+        "integridade": "Não avaliado",
+        "integridade_aviso": true,
+        "website": "https://example.org/fundacao-e"
+      }
+    ],
+    "vazio": false,
+    "mensagem_vazio": ""
+  }
+}
