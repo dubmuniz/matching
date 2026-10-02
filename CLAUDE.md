@@ -46,6 +46,12 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 - A resposta só **pré-preenche campos vazios**; o pesquisador revisa. `PROMPT_EXTRACAO_VERSAO` segue a mesma regra de versão.
 - Arquivos `.gs` não podem usar, no nível de topo, constantes de outros arquivos (a ordem de carga do Apps Script não é garantida): monte esses valores dentro de funções.
 
+## Fase 2B: rascunho de proposta em XLSX (`apps-script/Proposta.gs`, `docs/proposta.js`, `docs/xlsx.js`)
+- Botão nos cards de oportunidade. O navegador faz 2 requisições `acao: "proposta"` (parte 1: ficha + marco lógico; parte 2: orçamento + Gantt) e monta o XLSX localmente com `docs/xlsx.js` (gerador próprio, sem biblioteca externa). Nada é gravado no servidor.
+- O edital é relido da planilha pelo ID (só ativos e não vedados); duração por `duracaoEmMeses()` (padrão de 24 meses, com aviso, quando o edital não informa). A demanda é validada de novo; nome e e-mail não vão para a IA (entram só no arquivo gerado no navegador).
+- Orçamento: moeda do edital, por ano, rubricas do edital ou modelo padrão; valores são ESTIMATIVAS da IA, sempre marcados como rascunho; totais por fórmula. Texto entra como inline string (nunca fórmula).
+- Cotas: 5 por e-mail/24 h e 20/h, para cada parte. `PROMPT_PROPOSTA_VERSAO` segue a regra de versão.
+
 ## Testes e fluxo
 - Funções puras (`Prazo.gs`, `Preselecao.gs`) rodam no Apps Script e no Node (`if (typeof module !== 'undefined') module.exports = {...}`). Testes: `node --test` (descobre `tests/*.test.js`). `tests/apps-script.test.js` carrega todos os `.gs` com serviços simulados e confere colisão de nomes com o script existente.
 - Construção por etapas (seção 12), com revisão do Bruno ao fim de cada uma. Commit em português ao fim de cada etapa, direto na `main`.

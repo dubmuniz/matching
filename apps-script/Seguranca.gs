@@ -72,6 +72,7 @@ var CAMPOS_FORMULARIO = [
   'nome', 'email', 'unidade', 'unidadeOutra', 'titulo', 'resumo', 'problema', 'objetivos',
   'areas', 'abrangencia', 'maturidade', 'valorEstimado', 'horizonte', 'parceiros', 'idiomas',
   'consentimento',
+  'idiomaProposta',  // opcional: idioma do rascunho de proposta (fase 2B); padrão Português
   'site',            // honeypot: campo invisível que precisa chegar vazio
   'turnstileToken'   // token do Cloudflare Turnstile
 ];
@@ -87,7 +88,9 @@ var CHAVE_LIMITE_GLOBAL_ = 'LIMITE_GLOBAL';
 // Cotas por tipo de uso. A extração de arquivos (fase 2) tem cota própria.
 var COTAS_TAXA_ = {
   matching: { porEmail: LIMITE_ENVIOS_POR_EMAIL, global: LIMITE_ENVIOS_GLOBAIS, prefixo: PREFIXO_LIMITE_EMAIL_, chaveGlobal: CHAVE_LIMITE_GLOBAL_ },
-  extracao: { porEmail: 5, global: 30, prefixo: 'LIMITE_EXTRACAO_EMAIL_', chaveGlobal: 'LIMITE_EXTRACAO_GLOBAL' }
+  extracao: { porEmail: 5, global: 30, prefixo: 'LIMITE_EXTRACAO_EMAIL_', chaveGlobal: 'LIMITE_EXTRACAO_GLOBAL' },
+  proposta: { porEmail: 5, global: 20, prefixo: 'LIMITE_PROPOSTA_EMAIL_', chaveGlobal: 'LIMITE_PROPOSTA_GLOBAL' },
+  proposta2: { porEmail: 5, global: 20, prefixo: 'LIMITE_PROPOSTA2_EMAIL_', chaveGlobal: 'LIMITE_PROPOSTA2_GLOBAL' }
 };
 
 /* =====================================================================
@@ -177,6 +180,9 @@ function validarDemanda(dados) {
   escolha('horizonte', 'Horizonte de início desejado', HORIZONTES_INICIO);
   texto('parceiros', 'Parceiros internacionais', 0, 500, { multilinha: true, opcional: true });
   multipla('idiomas', 'Idiomas de submissão', IDIOMAS_SUBMISSAO, 1, IDIOMAS_SUBMISSAO.length);
+
+  if (dados.idiomaProposta === undefined || dados.idiomaProposta === '') d.idiomaProposta = 'Português';
+  else escolha('idiomaProposta', 'Idioma da proposta', IDIOMAS_SUBMISSAO);
 
   if (dados.consentimento !== true) erros.consentimento = 'É preciso autorizar o uso das informações para continuar.';
 

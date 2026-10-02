@@ -5,7 +5,7 @@ Ferramenta do Escritório de Captação de Recursos da Presidência da Fiocruz. 
 > **A IA apoia, não decide.** Toda nota vem com justificativa. Prazos, valores e links vêm sempre da planilha, nunca da IA.
 
 - **Página publicada:** https://dubmuniz.github.io/matching/
-- **Modo de teste, sem enviar nada:** https://dubmuniz.github.io/matching/?mock=1 (também há `?mock=vazio` e `?mock=erro`)
+- **Modo de teste, sem enviar nada:** https://dubmuniz.github.io/matching/?mock=1 (também há `?mock=vazio` e `?mock=erro`). No modo de teste, a leitura de arquivo e o rascunho de proposta usam exemplos fixos, e o XLSX de exemplo pode ser baixado.
 - **Especificação completa:** [`BRIEFING_Fioconecta_Matching.md`](BRIEFING_Fioconecta_Matching.md)
 
 ```
@@ -84,6 +84,7 @@ O projeto do matching é **separado** da planilha (*standalone*). O script antig
    | `Registro` | aba Demandas e e-mails |
    | `Seguranca` | validação do formulário e proteções contra abuso |
    | `Extracao` | leitura do arquivo enviado pelo pesquisador (pré-preenchimento) |
+   | `Proposta` | rascunho de proposta (ficha, marco lógico, orçamento e Gantt) para um edital escolhido |
    | `Codigo` | `doGet` / `doPost` (o app da web) |
    | `Testes` | funções de teste para rodar pelo editor |
 
@@ -120,6 +121,7 @@ No topo do editor, escolha a função e clique em **Executar**. O resultado apar
 | 4 | `testarMatching` | ~US$ 0,13 | matching completo com uma demanda de exemplo; mostra cards, tempo e custo |
 | 5 | `testarValidacao` | grátis | entradas inválidas são recusadas (todas as linhas devem começar com ✓) |
 | 6 | `testarEnvioCompleto` | ~US$ 0,13 | envio real: grava em *Demandas* e manda os e-mails para `ESCRITORIO_EMAIL` |
+| 7 | `testarProposta` | ~US$ 0,15–0,30 | gera as duas partes do rascunho de proposta para o primeiro edital; mostra tempo e resumo |
 
 Funções de apoio:
 - **`limparLimitesDeTaxa`:** zera os limites de envio durante os testes.
@@ -170,6 +172,9 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 | "Você atingiu o limite de 3 envios…" | limite por e-mail em 24 h | em teste, rode `limparLimitesDeTaxa()` |
 | "Não foi possível ler este arquivo…" (upload) | PDF com senha, digitalizado (só imagem) ou com mais de 100 páginas | salvar como PDF de texto, DOCX ou TXT; ou preencher à mão |
 | "…(código A1)" / "(código A2)" no upload | o navegador não conseguiu abrir o arquivo (ex.: DOCX corrompido ou navegador antigo) | salvar como PDF e tentar de novo |
+| "Não foi possível gerar esta parte da proposta…" | a IA falhou ou demorou demais | tente de novo; se repetir, `verUltimosErros()` |
+| "Este edital não está mais disponível…" | o edital foi desativado, marcado como vedado ou saiu da planilha | refaça o matching |
+| "(código X1)" ao gerar a proposta | o navegador não conseguiu montar a planilha | atualize o navegador e tente de novo |
 | Página antiga ou sem estilo | cache | Ctrl+Shift+R; confira se o `?v=N` foi aumentado |
 | Edital com integridade "Não avaliado" que deveria ter status | nome do parceiro diferente nas duas abas | `diagnosticoBase()` lista os casos; iguale a grafia |
 | Registro do editor cortado | o Apps Script limita cada mensagem a ~8 KB | as funções de teste já imprimem em blocos; role o registro até o fim |
@@ -184,6 +189,7 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 | Envios no total | 30 por hora |
 | Tamanho do envio | até 20 KB (formulário); arquivo para leitura: até 10 MB |
 | Leitura de arquivo (pré-preenchimento) | ~US$ 0,05–0,20 por arquivo; 5 por e-mail a cada 24 h, 30 por hora |
+| Rascunho de proposta (XLSX) | ~US$ 0,15–0,30 por proposta (2 chamadas de 30–60 s); 5 por e-mail a cada 24 h, 20 por hora |
 | E-mails por dia (conta Gmail gratuita) | ~100 destinatários (cada demanda usa 1 ou 2) |
 
 ## 12. Caminho B: clasp (opcional)

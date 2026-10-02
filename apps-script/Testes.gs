@@ -31,6 +31,46 @@ function verUltimosErros() {
   }));
 }
 
+/**
+ * Gera as duas partes do rascunho de proposta (fase 2B) para o primeiro edital candidato,
+ * com a demanda de exemplo. GASTA CRÉDITOS DA API (~US$ 0,15–0,30) e conta na cota do ESCRITORIO_EMAIL.
+ * Mostra o tempo de cada parte e um resumo do conteúdo (o XLSX só é montado na página).
+ */
+function testarProposta() {
+  var cfg = obterConfigMatching_();
+  if (!cfg.escritorioEmail) throw new Error('Configure ESCRITORIO_EMAIL antes deste teste.');
+  var base = carregarBaseMatching_(cfg, hojeSaoPaulo_());
+  if (!base.candidatos.length) throw new Error('Nenhum edital candidato na planilha.');
+  var demanda = envioValidoDeExemplo_(cfg.escritorioEmail);
+  delete demanda.site; delete demanda.turnstileToken;
+  var id = base.candidatos[0].id;
+  var linhas = ['===== TESTE DE PROPOSTA (' + id + ': ' + base.candidatos[0].edital + ') ====='];
+
+  var t1 = Date.now();
+  var r1 = processarProposta_({ acao: 'proposta', parte: 1, demanda: demanda, idOportunidade: id, idioma: 'Português', site: '', turnstileToken: '' });
+  linhas.push('Parte 1: ' + ((Date.now() - t1) / 1000).toFixed(1) + ' s | ok: ' + r1.ok + (r1.erro ? ' | ' + r1.erro : ''));
+  if (!r1.ok) { imprimirEmBlocos_(linhas); return; }
+  linhas.push('  Duração: ' + r1.duracao.meses + ' meses (' + r1.duracao.origem + ') | linhas do marco: ' + r1.marco.length);
+  linhas.push('  Objetivo geral: ' + r1.ficha.objetivo_geral);
+
+  var outputs = [], vistos = {};
+  r1.marco.forEach(function (l) {
+    var n = String(l.codigo).split('.')[0];
+    if (l.nivel === 'OUTPUT' && !vistos[n]) { vistos[n] = true; outputs.push({ codigo: 'O' + n, descricao: l.logica }); }
+  });
+  var t2 = Date.now();
+  var r2 = processarProposta_({ acao: 'proposta', parte: 2, demanda: demanda, idOportunidade: id, idioma: 'Português', outputs: outputs, site: '', turnstileToken: '' });
+  linhas.push('Parte 2: ' + ((Date.now() - t2) / 1000).toFixed(1) + ' s | ok: ' + r2.ok + (r2.erro ? ' | ' + r2.erro : ''));
+  if (r2.ok) {
+    var total = r2.orcamento.linhas.reduce(function (s, l) { return s + l.quantidade * l.custo_unitario; }, 0);
+    linhas.push('  Orçamento: ' + r2.orcamento.linhas.length + ' linhas, total ' + r2.orcamento.moeda + ' ' + total.toFixed(2) +
+      ' (rubricas ' + (r2.orcamento.rubricas_do_edital ? 'do edital' : 'padrão') + ')');
+    linhas.push('  Gantt: ' + r2.gantt.length + ' atividades');
+  }
+  linhas.push('===== FIM =====');
+  imprimirEmBlocos_(linhas);
+}
+
 /** Simula o evento que o Apps Script entrega ao doPost. */
 function eventoPost_(corpo) {
   return { postData: { contents: typeof corpo === 'string' ? corpo : JSON.stringify(corpo), type: 'text/plain' } };

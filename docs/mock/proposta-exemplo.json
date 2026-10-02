@@ -1,0 +1,72 @@
+{
+  "parte1": {
+    "ok": true,
+    "parte": 1,
+    "versao": "proposta-v1",
+    "edital": {
+      "id": "OPP-9001",
+      "financiador": "Financiador Exemplo A",
+      "edital": "Chamada contínua de clima e saúde (exemplo)",
+      "link": "https://example.org/edital-a",
+      "prazo_texto": "Fluxo contínuo",
+      "valores": "US$ 500.000 a US$ 2.000.000",
+      "duracao": "24 a 36 meses"
+    },
+    "duracao": { "meses": 36, "origem": "edital" },
+    "ficha": {
+      "titulo": "Vigilância integrada de arboviroses com dados climáticos em municípios amazônicos (EXEMPLO)",
+      "resumo": "Sistema de vigilância que combina notificações do SUS, vigilância entomológica e dados climáticos para gerar alertas precoces de dengue, chikungunya, Zika e Oropouche em 10 municípios do Amazonas.",
+      "problema": "Surtos de arboviroses são detectados tarde porque os dados clínicos, entomológicos e climáticos estão dispersos.",
+      "objetivos": "Integrar bases de saúde e clima; validar modelos de alerta precoce; implantar painéis em 10 municípios; capacitar 60 profissionais.",
+      "abrangencia": "Estado do Amazonas (10 municípios)",
+      "parceiros": "[a definir pela equipe]",
+      "objetivo_geral": "Reduzir o impacto de surtos de arboviroses na Amazônia por meio de alertas precoces baseados em dados climáticos.",
+      "objetivos_especificos": [
+        "Integrar dados de notificação, entomológicos e climáticos numa base única.",
+        "Desenvolver e validar modelos preditivos de surtos.",
+        "Implantar painéis de alerta nas secretarias municipais de saúde.",
+        "Capacitar equipes locais para o uso contínuo da ferramenta."
+      ],
+      "publico_beneficiario": "Equipes de vigilância de 10 municípios e cerca de 600 mil habitantes da área de abrangência.",
+      "justificativa_aderencia": "O edital financia sistemas de alerta que integram clima e saúde em países de renda média, exatamente o foco do projeto."
+    },
+    "marco": [
+      { "nivel": "IMPACTO", "codigo": "IMP", "logica": "Reduzir a carga de arboviroses em municípios amazônicos vulneráveis ao clima.", "indicador": "Incidência anual de arboviroses nos municípios participantes.", "linha_base": "[a definir com dados do SINAN]", "meta": "Tendência de queda em relação à média dos 5 anos anteriores.", "fonte_verificacao": "SINAN; boletins epidemiológicos", "frequencia": "Anual", "responsavel": "Coordenação do projeto", "marco_verificacao": "M36", "pressupostos": "Notificação estável; ausência de mudanças bruscas no sistema de vigilância." },
+      { "nivel": "OUTCOME", "codigo": "OC.1", "logica": "Secretarias municipais usam alertas precoces para orientar ações de controle.", "indicador": "Nº de municípios que acionam resposta a partir de alertas do sistema.", "linha_base": "0", "meta": "≥ 8 de 10 municípios", "fonte_verificacao": "Atas e registros das secretarias", "frequencia": "Semestral", "responsavel": "Equipe de vigilância", "marco_verificacao": "M24", "pressupostos": "Adesão das gestões municipais." },
+      { "nivel": "OUTPUT", "codigo": "1.1", "logica": "OUTPUT 1 — Base integrada de dados de saúde e clima em operação.", "indicador": "Base integrada com atualização semanal automática.", "linha_base": "Dados dispersos", "meta": "1 base em operação", "fonte_verificacao": "Relatório técnico; registro de atualizações", "frequencia": "Trimestral", "responsavel": "Equipe de dados", "marco_verificacao": "M9", "pressupostos": "Acesso aos dados do SUS e do INMET." },
+      { "nivel": "OUTPUT", "codigo": "2.1", "logica": "OUTPUT 2 — Modelos preditivos validados e painéis implantados.", "indicador": "Nº de municípios com painel em uso.", "linha_base": "0", "meta": "10", "fonte_verificacao": "Registros de acesso aos painéis", "frequencia": "Trimestral", "responsavel": "Equipe de modelagem", "marco_verificacao": "M18", "pressupostos": "Conectividade mínima nos municípios." },
+      { "nivel": "OUTPUT", "codigo": "3.1", "logica": "OUTPUT 3 — Profissionais capacitados para uso contínuo do sistema.", "indicador": "Nº de profissionais capacitados com ≥ 80% de presença.", "linha_base": "0", "meta": "60", "fonte_verificacao": "Listas de presença; avaliações", "frequencia": "Semestral", "responsavel": "Coordenação de formação", "marco_verificacao": "M30", "pressupostos": "Liberação dos profissionais pelas secretarias." }
+    ],
+    "avisos": ["O edital exige parceiro coexecutor no país do financiador; a demanda ainda não tem acordo formal."]
+  },
+  "parte2": {
+    "ok": true,
+    "parte": 2,
+    "versao": "proposta-v1",
+    "duracao": { "meses": 36, "origem": "edital" },
+    "orcamento": {
+      "moeda": "USD",
+      "moeda_informada": true,
+      "rubricas_do_edital": false,
+      "linhas": [
+        { "rubrica": "Pessoal", "descricao": "Coordenação do projeto (20 h/semana)", "unidade": "mês", "quantidade": 36, "custo_unitario": 2500, "por_ano": [30000, 30000, 30000] },
+        { "rubrica": "Pessoal", "descricao": "Analista de dados", "unidade": "mês", "quantidade": 36, "custo_unitario": 2200, "por_ano": [26400, 26400, 26400] },
+        { "rubrica": "Equipamentos e material permanente", "descricao": "Servidor e estações de trabalho", "unidade": "conjunto", "quantidade": 1, "custo_unitario": 18000, "por_ano": [18000, 0, 0] },
+        { "rubrica": "Material de consumo", "descricao": "Armadilhas e insumos entomológicos", "unidade": "lote", "quantidade": 6, "custo_unitario": 1500, "por_ano": [3000, 3000, 3000] },
+        { "rubrica": "Viagens e diárias", "descricao": "Missões de campo aos municípios", "unidade": "viagem", "quantidade": 24, "custo_unitario": 900, "por_ano": [7200, 9000, 5400] },
+        { "rubrica": "Serviços de terceiros", "descricao": "Desenvolvimento dos painéis", "unidade": "serviço", "quantidade": 1, "custo_unitario": 25000, "por_ano": [10000, 15000, 0] },
+        { "rubrica": "Custos indiretos", "descricao": "Custos administrativos (7%)", "unidade": "verba", "quantidade": 1, "custo_unitario": 22000, "por_ano": [7400, 7600, 7000] }
+      ],
+      "observacoes": ["Valores estimados; confirme o teto e o percentual de custos indiretos aceitos pelo edital."]
+    },
+    "gantt": [
+      { "output": "O1", "codigo": "A1.1", "atividade": "Levantar e integrar bases do SINAN, entomologia e INMET", "entregavel": "Base integrada documentada", "indicador": "1.1", "responsavel": "Equipe de dados", "mes_inicio": 1, "mes_fim": 9, "marcos": [9] },
+      { "output": "O1", "codigo": "A1.2", "atividade": "Automatizar a atualização semanal", "entregavel": "Rotina automática", "indicador": "1.1", "responsavel": "Equipe de dados", "mes_inicio": 6, "mes_fim": 12, "marcos": [12] },
+      { "output": "O2", "codigo": "A2.1", "atividade": "Desenvolver e validar modelos preditivos", "entregavel": "Relatório de validação", "indicador": "2.1", "responsavel": "Equipe de modelagem", "mes_inicio": 7, "mes_fim": 18, "marcos": [18] },
+      { "output": "O2", "codigo": "A2.2", "atividade": "Implantar painéis nas secretarias", "entregavel": "Painéis em uso", "indicador": "2.1", "responsavel": "Equipe de modelagem", "mes_inicio": 15, "mes_fim": 30, "marcos": [24, 30] },
+      { "output": "O3", "codigo": "A3.1", "atividade": "Capacitar profissionais municipais", "entregavel": "60 profissionais capacitados", "indicador": "3.1", "responsavel": "Coordenação de formação", "mes_inicio": 13, "mes_fim": 33, "marcos": [30] },
+      { "output": "O3", "codigo": "A3.2", "atividade": "Plano de sustentabilidade e encerramento", "entregavel": "Plano aprovado", "indicador": "3.1", "responsavel": "Coordenação do projeto", "mes_inicio": 30, "mes_fim": 36, "marcos": [36] }
+    ],
+    "avisos": []
+  }
+}

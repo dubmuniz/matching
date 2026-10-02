@@ -96,6 +96,7 @@ function processarEnvio_(e) {
 
   if (dados && typeof dados === 'object' && dados.acao === 'extrair') return processarExtracao_(dados);
   if (tamanhoEmBytes_(bruto) > LIMITE_CORPO_BYTES) return falha_('tamanho');
+  if (dados && typeof dados === 'object' && dados.acao === 'proposta') return processarProposta_(dados);
 
   // 2. Honeypot (antes de qualquer outra coisa, sem dar pistas)
   if (honeypotPreenchido(dados)) {

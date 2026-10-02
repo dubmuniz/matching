@@ -8,14 +8,14 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Fioconecta · Matching de Oportunidades</title>
   <meta name="description" content="Apresente seu projeto e receba sugestões de editais e financiadores aderentes, a partir da base curada pelo Escritório de Captação da Fiocruz.">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
   <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
   <header class="topo">
     <div class="topo-interno">
-      <img class="logo" src="img/logo-fiocruz.webp?v=8" alt="Fiocruz" width="164" height="46">
+      <img class="logo" src="img/logo-fiocruz.webp?v=10" alt="Fiocruz" width="164" height="46">
       <div class="topo-textos">
         <p class="sobretitulo">Escritório de Captação de Recursos · Presidência da Fiocruz</p>
         <h1>Fioconecta · Matching de Oportunidades</h1>
@@ -175,6 +175,13 @@
           <div class="opcoes opcoes-linha" id="opcoes-idiomas"></div>
           <p id="idiomas-erro" class="erro" hidden></p>
         </fieldset>
+
+        <fieldset class="campo grupo" aria-describedby="idiomaProposta-ajuda idiomaProposta-erro">
+          <legend>Idioma do rascunho de proposta</legend>
+          <p id="idiomaProposta-ajuda" class="ajuda">Depois do matching, você pode gerar um rascunho de proposta (XLSX) para um edital escolhido, neste idioma.</p>
+          <div class="opcoes opcoes-linha" id="opcoes-idiomaProposta"></div>
+          <p id="idiomaProposta-erro" class="erro" hidden></p>
+        </fieldset>
       </fieldset>
 
       <!-- Campo invisível contra robôs: pessoas não o veem nem o preenchem. -->
@@ -215,7 +222,9 @@
     <p>Sugestões geradas com apoio de IA a partir da base curada pelo Escritório de Captação. Não constituem decisão institucional. O Escritório entrará em contato.</p>
   </footer>
 
-  <script src="config.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <script src="config.js?v=10"></script>
+  <script src="xlsx.js?v=10"></script>
+  <script src="proposta.js?v=10"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

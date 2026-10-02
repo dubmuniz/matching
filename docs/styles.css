@@ -178,6 +178,15 @@ textarea { resize: vertical; min-height: 5.5rem; }
 .sugerido-ia input[type="text"], .sugerido-ia textarea, .sugerido-ia select { border-color: var(--cor-primaria); background: #f3f8fc; }
 .nota-ia { margin: .3rem 0 0; font-size: .85rem; color: var(--cor-primaria); font-weight: 600; }
 
+/* ---------- rascunho de proposta (fase 2B) ---------- */
+
+.bloco-proposta { border-top: 1px dashed var(--cor-borda); padding-top: .6rem; display: grid; gap: .45rem; }
+.botao-proposta { justify-self: start; }
+.estado-proposta:empty { display: none; }
+.estado-proposta { border-radius: 6px; padding: .5rem .75rem; font-size: .9rem; }
+.estado-proposta p { margin: 0; }
+.link-download { display: inline-block; margin-top: .35rem; font-weight: 700; }
+
 /* Honeypot: fora da tela, sem ser display:none (alguns robôs ignoram campos ocultos). */
 .armadilha { position: absolute; left: -10000px; top: auto; width: 1px; height: 1px; overflow: hidden; }
 

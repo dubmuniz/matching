@@ -240,6 +240,8 @@
     criarGrupo('opcoes-valorEstimado', 'valorEstimado', 'radio', LISTAS.valorEstimado);
     criarGrupo('opcoes-horizonte', 'horizonte', 'radio', LISTAS.horizonte);
     criarGrupo('opcoes-idiomas', 'idiomas', 'checkbox', LISTAS.idiomas);
+    criarGrupo('opcoes-idiomaProposta', 'idiomaProposta', 'radio', LISTAS.idiomas);
+    $('idiomaProposta-0').checked = true;
   }
 
   function criarGrupo(idContainer, nome, tipo, valores) {
@@ -309,6 +311,7 @@
       horizonte: radio('horizonte'),
       parceiros: $('parceiros').value,
       idiomas: marcados('idiomas'),
+      idiomaProposta: radio('idiomaProposta') || 'Português',
       consentimento: $('consentimento').checked,
       site: $('site').value,
       turnstileToken: tokenTurnstile()
@@ -488,6 +491,9 @@
       reiniciarTurnstile();
       var protocolo = r.id_demanda ? ' Protocolo: ' + r.id_demanda + '.' : '';
       if (r.ok && r.resultado) {
+        ultimaDemanda = JSON.parse(JSON.stringify(dados));
+        delete ultimaDemanda.site;
+        delete ultimaDemanda.turnstileToken;
         try {
           mostrarResultado(r);
         } catch (e) {
@@ -697,6 +703,117 @@
     });
   }
 
+  /* ---------- rascunho de proposta em XLSX (fase 2B) ---------- */
+
+  var ultimaDemanda = null;     // demanda enviada no último matching bem-sucedido
+  var gerandoProposta = false;
+
+  function hojeTexto() {
+    var d = new Date();
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return p(d.getDate()) + '/' + p(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+
+  /** Com o Turnstile ligado, cada envio precisa de um token novo: espera o widget gerar (até 20 s). */
+  function aguardarToken() {
+    if (idWidgetTurnstile === null || !window.turnstile) return Promise.resolve('');
+    return new Promise(function (ok) {
+      var inicio = Date.now();
+      (function tentar() {
+        var t = tokenTurnstile();
+        if (t || Date.now() - inicio > 20000) ok(t);
+        else setTimeout(tentar, 300);
+      })();
+    });
+  }
+
+  function pedirParteProposta(parte, c, idioma, outputs) {
+    if (MODO_MOCK) {
+      return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () {
+        return fetch('mock/proposta-exemplo.json', { credentials: 'omit' }).then(function (r) { return r.json(); });
+      }).then(function (m) { return parte === 1 ? m.parte1 : m.parte2; });
+    }
+    return aguardarToken().then(function (token) {
+      var corpo = { acao: 'proposta', parte: parte, demanda: ultimaDemanda, idOportunidade: c.id, idioma: idioma,
+        site: $('site').value, turnstileToken: token };
+      if (parte === 2) corpo.outputs = outputs;
+      return enviar(corpo);
+    }).then(function (r) { reiniciarTurnstile(); return r; });
+  }
+
+  function baixarArquivo(bytes, nome, onde) {
+    var blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    var url = URL.createObjectURL(blob);
+    var a = el('a', 'link-download', 'Baixar novamente');
+    a.title = nome;
+    a.href = url;
+    a.download = nome;
+    onde.appendChild(a);
+    a.click();
+  }
+
+  function blocoProposta(c) {
+    if (!window.XlsxSimples || !window.PropostaXlsx) return null;
+    var bloco = el('div', 'bloco-proposta');
+    var botao = el('button', 'botao-secundario botao-proposta', 'Gerar rascunho de proposta (.xlsx)');
+    botao.type = 'button';
+    var estado = el('div', 'estado-proposta');
+    estado.setAttribute('role', 'status');
+    estado.setAttribute('aria-live', 'polite');
+    botao.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      gerarProposta(c, botao, estado);
+    });
+    bloco.appendChild(botao);
+    bloco.appendChild(estado);
+    return bloco;
+  }
+
+  function mensagemEstado(estado, texto, tipo) {
+    estado.textContent = '';
+    estado.className = 'estado-proposta' + (tipo ? ' estado-' + tipo : '');
+    if (texto) estado.appendChild(el('p', null, texto));
+  }
+
+  function gerarProposta(c, botao, estado) {
+    if (gerandoProposta) return;
+    if (!ultimaDemanda) { mensagemEstado(estado, 'Refaça o matching antes de gerar a proposta.', 'erro'); return; }
+    var idioma = ultimaDemanda.idiomaProposta || 'Português';
+    gerandoProposta = true;
+    var botoes = document.querySelectorAll('.botao-proposta');
+    Array.prototype.forEach.call(botoes, function (b) { b.disabled = true; });
+    var terminar = function () {
+      gerandoProposta = false;
+      Array.prototype.forEach.call(botoes, function (b) { b.disabled = false; });
+    };
+
+    mensagemEstado(estado, 'Etapa 1 de 2: ficha de identificação e marco lógico (até 1 minuto)…', 'carregando');
+    var parte1;
+    pedirParteProposta(1, c, idioma).then(function (r1) {
+      if (!r1 || !r1.ok) throw { mensagem: (r1 && r1.erro) || 'Não foi possível gerar a primeira parte.' };
+      parte1 = r1;
+      mensagemEstado(estado, 'Etapa 2 de 2: orçamento e cronograma (até 1 minuto)…', 'carregando');
+      return pedirParteProposta(2, c, idioma, window.PropostaXlsx.outputsDoMarco(r1.marco));
+    }).then(function (r2) {
+      if (!r2 || !r2.ok) throw { mensagem: (r2 && r2.erro) || 'Não foi possível gerar a segunda parte.' };
+      var dados = {
+        idioma: idioma, geradoEm: hojeTexto(), demanda: ultimaDemanda, edital: parte1.edital,
+        duracao: parte1.duracao, parte1: parte1, parte2: r2
+      };
+      var bytes = window.XlsxSimples.criar(window.PropostaXlsx.montarAbasProposta(dados));
+      var nome = window.PropostaXlsx.nomeArquivoProposta(parte1.edital.edital);
+      var msg = 'Rascunho pronto: o download começou. Revise todo o conteúdo, principalmente os valores do orçamento, que são estimativas.';
+      if (parte1.duracao.origem === 'padrao') {
+        msg += ' Atenção: o edital não informa a duração do projeto; o cronograma usa ' + parte1.duracao.meses + ' meses. Ajuste à regra do edital.';
+      }
+      mensagemEstado(estado, msg, 'ok');
+      baixarArquivo(bytes, nome, estado);
+    }).catch(function (e) {
+      if (!(e && e.mensagem)) console.error('Falha ao gerar a proposta:', e);
+      mensagemEstado(estado, (e && e.mensagem) || 'Ocorreu um erro na página ao montar a planilha (código X1).', 'erro');
+    }).then(terminar);
+  }
+
   /* ---------- resultados ---------- */
 
   var CRITERIOS = [
@@ -778,6 +895,7 @@
     adicionar(rodape, linkExterno(c.link_edital, 'Ver edital', 'Ver edital ' + c.edital));
     rodape.appendChild(botaoCriterios(art, c));
     art.appendChild(rodape);
+    adicionar(art, blocoProposta(c));
     return art;
   }
 

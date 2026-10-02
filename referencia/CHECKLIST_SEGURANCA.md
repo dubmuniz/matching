@@ -49,3 +49,16 @@ Legenda: ✅ atendido · ⚠️ atendido com risco residual ou com ação penden
 | Prompt injection pelo arquivo | ✅ | Prompt manda tratar o documento como dado; texto de DOCX/TXT delimitado em `<documento>` com `<`/`>` trocados; saída validada (listas fechadas, tamanhos). Só pré-preenche: o pesquisador revisa. |
 | Abuso / custo | ✅ | Cota própria (5 por e-mail/24 h, 30/h), honeypot e Turnstile; arquivo até 10 MB, corpo até 15 MB só nessa ação; PDF conferido pela assinatura `%PDF`. |
 | XSS | ✅ | Sugestões entram nos campos por `.value` e as observações por `textContent`. |
+
+## Fase 2B: rascunho de proposta em XLSX (02/10/2026)
+
+| Item | Situação | Onde / como |
+|---|---|---|
+| Fatos do edital vindos da planilha | ✅ | O servidor relê o edital pelo ID entre os candidatos (ativos e não vedados); o navegador não envia dados do edital. |
+| Demanda validada de novo no servidor | ✅ | `validarDemanda()`; campos desconhecidos rejeitados. |
+| Nome e e-mail fora da IA | ✅ | `demandaParaIA()`; teste confere. Eles aparecem só no XLSX montado no próprio navegador do pesquisador. |
+| Prompt injection | ✅ | Demanda, edital e outputs (vindos do navegador na parte 2) entre tags, com `<`/`>` escapados; saída normalizada (níveis, limites de tamanho e quantidade, meses dentro da duração, números ≥ 0). |
+| Injeção de fórmulas no XLSX | ✅ | Todo texto é gravado como inline string (teste com texto iniciado por `=`); só os totais do orçamento são fórmulas, geradas pelo código. |
+| Valores do orçamento | ⚠️ | São estimativas da IA. Sempre marcados como "rascunho estimado por IA" na página e na planilha; total limitado no prompt ao teto do edital, sem verificação automática (o campo Valores é texto livre). |
+| Abuso / custo | ✅ | Cotas de 5 por e-mail/24 h e 20/h para cada parte; honeypot e Turnstile. Pior caso com Turnstile desligado: ~US$ 6/h. |
+| Nada gravado | ✅ | `processarProposta_()` não grava na planilha nem envia e-mail. |

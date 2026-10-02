@@ -1,4 +1,6 @@
-# Fase 2: especificação (rascunho para aprovação)
+# Fase 2: especificação
+
+> **Situação (02/10/2026):** A (upload) e B (XLSX) implementadas, conforme abaixo.
 
 Duas funções novas, pedidas pelo Bruno em 02/10/2026. Esta fase fica fora do escopo do MVP: a seção 14 do briefing previa "elaboração assistida de propostas" como fase futura.
 
