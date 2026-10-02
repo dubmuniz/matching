@@ -39,3 +39,13 @@ Legenda: ✅ atendido · ⚠️ atendido com risco residual ou com ação penden
 
 - **Achado corrigido:** `registrarErro_()` podia ultrapassar o limite de 9 KB de uma propriedade, e aí os erros deixariam de ser guardados sem nenhum aviso. Agora o código descarta os erros mais antigos até a lista caber, com a conta feita em bytes. Há um teste para isso.
 - **Nenhum achado alto ou médio no código.** Os itens ⚠️ dependem de configuração pela equipe, não de código.
+
+## Fase 2A: leitura de arquivo (02/10/2026)
+
+| Item | Situação | Onde / como |
+|---|---|---|
+| Autorização específica para enviar o arquivo à IA (inclusive dados pessoais) | ✅ | `consentimentoArquivo`, obrigatório no navegador e no servidor. |
+| Nome e e-mail não extraídos; nada do arquivo gravado | ✅ | `normalizarCamposExtraidos()` só devolve campos do projeto; `processarExtracao_()` não grava nem envia e-mail. O e-mail do pesquisador não vai à IA (teste). |
+| Prompt injection pelo arquivo | ✅ | Prompt manda tratar o documento como dado; texto de DOCX/TXT delimitado em `<documento>` com `<`/`>` trocados; saída validada (listas fechadas, tamanhos). Só pré-preenche: o pesquisador revisa. |
+| Abuso / custo | ✅ | Cota própria (5 por e-mail/24 h, 30/h), honeypot e Turnstile; arquivo até 10 MB, corpo até 15 MB só nessa ação; PDF conferido pela assinatura `%PDF`. |
+| XSS | ✅ | Sugestões entram nos campos por `.value` e as observações por `textContent`. |

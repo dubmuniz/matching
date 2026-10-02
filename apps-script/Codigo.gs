@@ -87,10 +87,15 @@ function processarEnvio_(e) {
   // 1. Tamanho e formato
   var bruto = (e && e.postData && typeof e.postData.contents === 'string') ? e.postData.contents : '';
   if (!bruto) return falha_('formato');
-  if (bruto.length > LIMITE_CORPO_BYTES || tamanhoEmBytes_(bruto) > LIMITE_CORPO_BYTES) return falha_('tamanho');
+  // Só a leitura de arquivo (acao "extrair") pode passar de 20 KB, até 15 MB.
+  var pareceExtracao = bruto.indexOf('"acao":"extrair"') >= 0;
+  if (bruto.length > (pareceExtracao ? LIMITE_CORPO_EXTRACAO_BYTES : LIMITE_CORPO_BYTES)) return falha_('tamanho');
 
   var dados;
   try { dados = JSON.parse(bruto); } catch (err) { return falha_('formato'); }
+
+  if (dados && typeof dados === 'object' && dados.acao === 'extrair') return processarExtracao_(dados);
+  if (tamanhoEmBytes_(bruto) > LIMITE_CORPO_BYTES) return falha_('tamanho');
 
   // 2. Honeypot (antes de qualquer outra coisa, sem dar pistas)
   if (honeypotPreenchido(dados)) {

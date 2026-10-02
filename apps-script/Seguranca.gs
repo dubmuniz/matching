@@ -84,6 +84,12 @@ var JANELA_GLOBAL_MS = 60 * 60 * 1000;
 var PREFIXO_LIMITE_EMAIL_ = 'LIMITE_EMAIL_';
 var CHAVE_LIMITE_GLOBAL_ = 'LIMITE_GLOBAL';
 
+// Cotas por tipo de uso. A extração de arquivos (fase 2) tem cota própria.
+var COTAS_TAXA_ = {
+  matching: { porEmail: LIMITE_ENVIOS_POR_EMAIL, global: LIMITE_ENVIOS_GLOBAIS, prefixo: PREFIXO_LIMITE_EMAIL_, chaveGlobal: CHAVE_LIMITE_GLOBAL_ },
+  extracao: { porEmail: 5, global: 30, prefixo: 'LIMITE_EXTRACAO_EMAIL_', chaveGlobal: 'LIMITE_EXTRACAO_GLOBAL' }
+};
+
 /* =====================================================================
  * Funções puras
  * ===================================================================== */
@@ -235,19 +241,21 @@ function verificarTurnstile_(cfg, token) {
   }
 }
 
-function chaveLimiteEmail_(email) {
+function chaveLimiteEmail_(email, prefixo) {
   var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(email).toLowerCase(), Utilities.Charset.UTF_8);
-  return PREFIXO_LIMITE_EMAIL_ + Utilities.base64EncodeWebSafe(bytes).replace(/=+$/, '');
+  return (prefixo || PREFIXO_LIMITE_EMAIL_) + Utilities.base64EncodeWebSafe(bytes).replace(/=+$/, '');
 }
 
 /**
- * Aplica os limites de taxa e já registra o envio atual.
- * - por e-mail: 3 envios a cada 24 h (guardado em Propriedades do usuário, porque o
+ * Aplica os limites de taxa e já registra o uso atual.
+ * - por e-mail: N usos a cada 24 h (guardado em Propriedades do usuário, porque o
  *   CacheService só guarda por até 6 h). A chave é um hash do e-mail, não o e-mail;
- * - global: 30 envios por hora (CacheService).
+ * - global: N usos por hora (CacheService).
+ * @param {string} tipo  'matching' (padrão: 3 por e-mail, 30 por hora) ou 'extracao' (5 e 30)
  * @return {{ permitido: boolean, motivo?: 'email'|'global'|'ocupado' }}
  */
-function verificarLimiteDeTaxa_(email) {
+function verificarLimiteDeTaxa_(email, tipo) {
+  var cota = COTAS_TAXA_[tipo || 'matching'];
   var trava = LockService.getScriptLock();
   if (!trava.tryLock(10000)) return { permitido: false, motivo: 'ocupado' };
   try {
@@ -255,14 +263,14 @@ function verificarLimiteDeTaxa_(email) {
     var cache = CacheService.getScriptCache();
     var props = PropertiesService.getUserProperties();
 
-    var global = aplicarJanelaDeLimite(lerJson_(cache.get(CHAVE_LIMITE_GLOBAL_)), agora, JANELA_GLOBAL_MS, LIMITE_ENVIOS_GLOBAIS);
+    var global = aplicarJanelaDeLimite(lerJson_(cache.get(cota.chaveGlobal)), agora, JANELA_GLOBAL_MS, cota.global);
     if (!global.permitido) return { permitido: false, motivo: 'global' };
 
-    var chave = chaveLimiteEmail_(email);
-    var porEmail = aplicarJanelaDeLimite(lerJson_(props.getProperty(chave)), agora, JANELA_EMAIL_MS, LIMITE_ENVIOS_POR_EMAIL);
+    var chave = chaveLimiteEmail_(email, cota.prefixo);
+    var porEmail = aplicarJanelaDeLimite(lerJson_(props.getProperty(chave)), agora, JANELA_EMAIL_MS, cota.porEmail);
     if (!porEmail.permitido) return { permitido: false, motivo: 'email' };
 
-    cache.put(CHAVE_LIMITE_GLOBAL_, JSON.stringify(global.registros), Math.ceil(JANELA_GLOBAL_MS / 1000));
+    cache.put(cota.chaveGlobal, JSON.stringify(global.registros), Math.ceil(JANELA_GLOBAL_MS / 1000));
     props.setProperty(chave, JSON.stringify(porEmail.registros));
     limparLimitesVencidos_(props, agora);
     return { permitido: true };
@@ -280,19 +288,24 @@ function lerJson_(s) {
 function limparLimitesVencidos_(props, agora) {
   var todas = props.getProperties();
   Object.keys(todas).forEach(function (k) {
-    if (k.indexOf(PREFIXO_LIMITE_EMAIL_) !== 0) return;
+    if (!ehChaveDeLimite_(k)) return;
     var ativos = lerJson_(todas[k]).filter(function (t) { return t > agora - JANELA_EMAIL_MS; });
     if (!ativos.length) props.deleteProperty(k);
   });
 }
 
 /** Para testes: zera os limites de taxa (rode pelo editor). */
+function ehChaveDeLimite_(k) {
+  return Object.keys(COTAS_TAXA_).some(function (t) { return k.indexOf(COTAS_TAXA_[t].prefixo) === 0; });
+}
+
 function limparLimitesDeTaxa() {
-  CacheService.getScriptCache().remove(CHAVE_LIMITE_GLOBAL_);
+  var cache = CacheService.getScriptCache();
+  Object.keys(COTAS_TAXA_).forEach(function (t) { cache.remove(COTAS_TAXA_[t].chaveGlobal); });
   var props = PropertiesService.getUserProperties();
   var n = 0;
   Object.keys(props.getProperties()).forEach(function (k) {
-    if (k.indexOf(PREFIXO_LIMITE_EMAIL_) === 0) { props.deleteProperty(k); n++; }
+    if (ehChaveDeLimite_(k)) { props.deleteProperty(k); n++; }
   });
   console.log('Limites de taxa zerados (' + n + ' e-mail(s)).');
 }

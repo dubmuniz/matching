@@ -40,6 +40,12 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 ## Prompt
 - Prompt em `apps-script/Prompt.gs` com `PROMPT_VERSAO`. Mudou o texto, incrementa a versão.
 
+## Fase 2A: leitura de arquivo (`apps-script/Extracao.gs`)
+- `doPost` com `acao: "extrair"`: PDF vai ao Claude como documento base64; DOCX/TXT chegam como texto (o DOCX é lido no navegador, sem biblioteca externa). Corpo até 15 MB só nessa ação; arquivo até 10 MB.
+- Exige autorização própria (`consentimentoArquivo`) e e-mail válido; cota própria (5 por e-mail/24 h, 30/h). Nada do arquivo é gravado; nome e e-mail nunca são extraídos.
+- A resposta só **pré-preenche campos vazios**; o pesquisador revisa. `PROMPT_EXTRACAO_VERSAO` segue a mesma regra de versão.
+- Arquivos `.gs` não podem usar, no nível de topo, constantes de outros arquivos (a ordem de carga do Apps Script não é garantida): monte esses valores dentro de funções.
+
 ## Testes e fluxo
 - Funções puras (`Prazo.gs`, `Preselecao.gs`) rodam no Apps Script e no Node (`if (typeof module !== 'undefined') module.exports = {...}`). Testes: `node --test` (descobre `tests/*.test.js`). `tests/apps-script.test.js` carrega todos os `.gs` com serviços simulados e confere colisão de nomes com o script existente.
 - Construção por etapas (seção 12), com revisão do Bruno ao fim de cada uma. Commit em português ao fim de cada etapa, direto na `main`.

@@ -1,6 +1,6 @@
 # Fioconecta · Matching de Oportunidades
 
-Ferramenta do Escritório de Captação de Recursos da Presidência da Fiocruz. O pesquisador descreve o projeto num formulário web, e o sistema compara a demanda com a base de editais e financiadores mantida pelo Escritório numa planilha Google. Depois mostra as oportunidades mais aderentes, cada uma com a justificativa da nota.
+Ferramenta do Escritório de Captação de Recursos da Presidência da Fiocruz. O pesquisador descreve o projeto num formulário web (ou envia o documento do projeto para a IA sugerir o preenchimento), e o sistema compara a demanda com a base de editais e financiadores mantida pelo Escritório numa planilha Google. Depois mostra as oportunidades mais aderentes, cada uma com a justificativa da nota.
 
 > **A IA apoia, não decide.** Toda nota vem com justificativa. Prazos, valores e links vêm sempre da planilha, nunca da IA.
 
@@ -83,6 +83,7 @@ O projeto do matching é **separado** da planilha (*standalone*). O script antig
    | `Resultados` | montagem das seções e dos cards |
    | `Registro` | aba Demandas e e-mails |
    | `Seguranca` | validação do formulário e proteções contra abuso |
+   | `Extracao` | leitura do arquivo enviado pelo pesquisador (pré-preenchimento) |
    | `Codigo` | `doGet` / `doPost` (o app da web) |
    | `Testes` | funções de teste para rodar pelo editor |
 
@@ -167,6 +168,8 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 | "Ocorreu um erro inesperado… (ref. XXXXXXXX)" | erro no servidor | rode `verUltimosErros()` e procure o mesmo código `ref.` |
 | "Não conseguimos gerar as sugestões agora…" | a IA falhou, mas a demanda foi registrada e o Escritório foi avisado | `verUltimosErros()`; confira a chave da API e o saldo |
 | "Você atingiu o limite de 3 envios…" | limite por e-mail em 24 h | em teste, rode `limparLimitesDeTaxa()` |
+| "Não foi possível ler este arquivo…" (upload) | PDF com senha, digitalizado (só imagem) ou com mais de 100 páginas | salvar como PDF de texto, DOCX ou TXT; ou preencher à mão |
+| "…(código A1)" / "(código A2)" no upload | o navegador não conseguiu abrir o arquivo (ex.: DOCX corrompido ou navegador antigo) | salvar como PDF e tentar de novo |
 | Página antiga ou sem estilo | cache | Ctrl+Shift+R; confira se o `?v=N` foi aumentado |
 | Edital com integridade "Não avaliado" que deveria ter status | nome do parceiro diferente nas duas abas | `diagnosticoBase()` lista os casos; iguale a grafia |
 | Registro do editor cortado | o Apps Script limita cada mensagem a ~8 KB | as funções de teste já imprimem em blocos; role o registro até o fim |
@@ -179,7 +182,8 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 | Tempo de resposta | 30–60 s |
 | Envios por e-mail | 3 a cada 24 h |
 | Envios no total | 30 por hora |
-| Tamanho do envio | até 20 KB |
+| Tamanho do envio | até 20 KB (formulário); arquivo para leitura: até 10 MB |
+| Leitura de arquivo (pré-preenchimento) | ~US$ 0,05–0,20 por arquivo; 5 por e-mail a cada 24 h, 30 por hora |
 | E-mails por dia (conta Gmail gratuita) | ~100 destinatários (cada demanda usa 1 ou 2) |
 
 ## 12. Caminho B: clasp (opcional)

@@ -116,9 +116,96 @@
     }
   }
 
+  /* ---------- leitura de arquivos (fase 2A) ---------- */
+
+  var LIMITE_ARQUIVO_BYTES = 10 * 1024 * 1024;
+  var LIMITE_TEXTO_ARQUIVO = 200000;
+
+  /** 'pdf' | 'docx' | 'txt' | '' a partir do nome e do tipo MIME. */
+  function tipoDoArquivo(nome, mime) {
+    var n = String(nome || '').toLowerCase();
+    var m = String(mime || '').toLowerCase();
+    if (/\.pdf$/.test(n) || m === 'application/pdf') return 'pdf';
+    if (/\.docx$/.test(n) || m === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return 'docx';
+    if (/\.txt$/.test(n) || m === 'text/plain') return 'txt';
+    return '';
+  }
+
+  /**
+   * Procura um arquivo dentro de um zip (DOCX é um zip) lendo o diretório central.
+   * @param {Uint8Array} bytes
+   * @return {{ metodo: number, dados: Uint8Array } | null}  metodo 0 = sem compressão, 8 = deflate
+   */
+  function localizarNoZip(bytes, nomeProcurado) {
+    var dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    var fim = -1;
+    for (var i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--) {
+      if (dv.getUint32(i, true) === 0x06054b50) { fim = i; break; }
+    }
+    if (fim < 0) return null;
+    var total = dv.getUint16(fim + 10, true);
+    var p = dv.getUint32(fim + 16, true);
+    var decodificar = function (a, b) { return new TextDecoder('utf-8').decode(bytes.subarray(a, b)); };
+    for (var k = 0; k < total && p + 46 <= bytes.length; k++) {
+      if (dv.getUint32(p, true) !== 0x02014b50) return null;
+      var metodo = dv.getUint16(p + 10, true);
+      var tamComprimido = dv.getUint32(p + 20, true);
+      var tamNome = dv.getUint16(p + 28, true);
+      var tamExtra = dv.getUint16(p + 30, true);
+      var tamComentario = dv.getUint16(p + 32, true);
+      var inicioLocal = dv.getUint32(p + 42, true);
+      var nome = decodificar(p + 46, p + 46 + tamNome);
+      if (nome === nomeProcurado) {
+        if (dv.getUint32(inicioLocal, true) !== 0x04034b50) return null;
+        var inicioDados = inicioLocal + 30 + dv.getUint16(inicioLocal + 26, true) + dv.getUint16(inicioLocal + 28, true);
+        return { metodo: metodo, dados: bytes.subarray(inicioDados, inicioDados + tamComprimido) };
+      }
+      p += 46 + tamNome + tamExtra + tamComentario;
+    }
+    return null;
+  }
+
+  /** Texto de word/document.xml: um parágrafo (<w:p>) por linha. */
+  function textoDoDocumentXml(xml) {
+    var entidades = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
+    var decodificar = function (s) {
+      return s.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, function (_, e) {
+        if (e[0] === '#') return String.fromCodePoint(e[1].toLowerCase() === 'x' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10));
+        return entidades[e.toLowerCase()];
+      });
+    };
+    var paragrafos = String(xml).match(/<w:p[\s>][\s\S]*?<\/w:p>/g) || [];
+    return paragrafos.map(function (p) {
+      var partes = [];
+      var re = /<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\/>|<w:br\/>/g;
+      var m;
+      while ((m = re.exec(p)) !== null) partes.push(m[1] !== undefined ? decodificar(m[1]) : (m[0] === '<w:tab/>' ? '\t' : '\n'));
+      return partes.join('');
+    }).filter(function (t) { return t.trim(); }).join('\n');
+  }
+
+  /** Lê um DOCX (ArrayBuffer) e devolve o texto. Usa DecompressionStream (navegadores atuais e Node 18+). */
+  function textoDeDocx(arrayBuffer) {
+    var entrada = localizarNoZip(new Uint8Array(arrayBuffer), 'word/document.xml');
+    if (!entrada) return Promise.reject(new Error('DOCX inválido'));
+    var bytesXml;
+    if (entrada.metodo === 0) {
+      bytesXml = Promise.resolve(entrada.dados);
+    } else if (entrada.metodo === 8 && typeof DecompressionStream !== 'undefined') {
+      var fluxo = new Blob([entrada.dados]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+      bytesXml = new Response(fluxo).arrayBuffer().then(function (b) { return new Uint8Array(b); });
+    } else {
+      return Promise.reject(new Error('compressão não suportada'));
+    }
+    return bytesXml.then(function (b) { return textoDoDocumentXml(new TextDecoder('utf-8').decode(b)); });
+  }
+
   // Exporta para os testes no Node.
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { LISTAS: LISTAS, TAMANHOS: TAMANHOS, validarFormulario: validarFormulario, linkSeguro: linkSeguro, limpar: limpar };
+    module.exports = {
+      LISTAS: LISTAS, TAMANHOS: TAMANHOS, validarFormulario: validarFormulario, linkSeguro: linkSeguro, limpar: limpar,
+      tipoDoArquivo: tipoDoArquivo, localizarNoZip: localizarNoZip, textoDoDocumentXml: textoDoDocumentXml, textoDeDocx: textoDeDocx
+    };
   }
   if (typeof document === 'undefined') return;
 
@@ -426,6 +513,190 @@
     });
   }
 
+  /* ---------- upload: a IA sugere o preenchimento (fase 2A) ---------- */
+
+  var arquivoEscolhido = null;
+
+  function mostrarEstadoArquivo(texto, tipo) {
+    var e = $('estado-arquivo');
+    e.textContent = '';
+    e.className = 'estado-arquivo' + (tipo ? ' estado-' + tipo : '');
+    if (texto) e.appendChild(el('p', null, texto));
+    return e;
+  }
+
+  function escolherArquivo(arquivo) {
+    if (!arquivo) return;
+    if (!tipoDoArquivo(arquivo.name, arquivo.type)) {
+      arquivoEscolhido = null;
+      $('botao-ler-arquivo').disabled = true;
+      mostrarEstadoArquivo('Formato não aceito. Envie um PDF, DOCX ou TXT.', 'erro');
+      return;
+    }
+    if (arquivo.size > LIMITE_ARQUIVO_BYTES) {
+      arquivoEscolhido = null;
+      $('botao-ler-arquivo').disabled = true;
+      mostrarEstadoArquivo('O arquivo tem mais de 10 MB. Envie uma versão menor.', 'erro');
+      return;
+    }
+    arquivoEscolhido = arquivo;
+    $('arquivo-nome').textContent = 'Arquivo escolhido: ' + arquivo.name + ' (' + Math.ceil(arquivo.size / 1024) + ' KB)';
+    $('botao-ler-arquivo').disabled = false;
+    mostrarEstadoArquivo('');
+  }
+
+  function lerComoBase64(arquivo) {
+    return new Promise(function (ok, falha) {
+      var leitor = new FileReader();
+      leitor.onload = function () { ok(String(leitor.result).replace(/^data:[^,]*,/, '')); };
+      leitor.onerror = function () { falha(leitor.error); };
+      leitor.readAsDataURL(arquivo);
+    });
+  }
+
+  /** Prepara o arquivo para o servidor: PDF em base64; DOCX e TXT como texto. */
+  function prepararArquivo(arquivo) {
+    var tipo = tipoDoArquivo(arquivo.name, arquivo.type);
+    var nome = String(arquivo.name).slice(0, 200);
+    if (tipo === 'pdf') return lerComoBase64(arquivo).then(function (b64) { return { nome: nome, tipo: 'pdf', conteudo: b64 }; });
+    var texto = tipo === 'docx' ? arquivo.arrayBuffer().then(textoDeDocx) : arquivo.text();
+    return texto.then(function (t) { return { nome: nome, tipo: 'texto', conteudo: String(t).slice(0, LIMITE_TEXTO_ARQUIVO) }; });
+  }
+
+  function enviarExtracao(corpo) {
+    if (MODO_MOCK) {
+      return new Promise(function (ok) { setTimeout(ok, 1200); }).then(function () {
+        return {
+          ok: true,
+          campos: {
+            titulo: 'Vigilância integrada de arboviroses com dados climáticos (EXEMPLO)',
+            resumo: 'Sistema de vigilância que combina notificações, dados entomológicos e climáticos para gerar alertas precoces de dengue, chikungunya, Zika e Oropouche em municípios do Amazonas, com painéis para as secretarias de saúde e formação de equipes locais.',
+            problema: 'Surtos de arboviroses são detectados tarde porque os dados estão dispersos.',
+            objetivos: 'Integrar bases de saúde e clima; validar modelos de alerta; implantar painéis em 10 municípios.',
+            areas: ['Arboviroses e vetores', 'Clima e saúde'], abrangencia: 'Amazonas', unidade: 'ILMD – Fiocruz Amazônia',
+            maturidade: 'Projeto estruturado', valorEstimado: '', horizonte: '', parceiros: '', idiomas: ['Português', 'Inglês']
+          },
+          observacoes: ['O documento não informa o valor total necessário.', 'O documento não indica quando o projeto deve começar.']
+        };
+      });
+    }
+    return enviar(corpo);
+  }
+
+  var CAMPOS_TEXTO_IA = ['titulo', 'resumo', 'problema', 'objetivos', 'abrangencia', 'parceiros'];
+
+  function marcarSugerido(campo) {
+    var alvo = $(campo) ? $(campo).closest('.campo') : $('opcoes-' + campo) && $('opcoes-' + campo).closest('.campo');
+    if (!alvo || alvo.querySelector('.nota-ia')) return;
+    alvo.classList.add('sugerido-ia');
+    alvo.appendChild(el('p', 'nota-ia', 'Sugerido pela IA a partir do arquivo. Revise.'));
+  }
+
+  /** Preenche só os campos vazios. @return {{ preenchidos: number, mantidos: number }} */
+  function preencherComSugestoes(c) {
+    var preenchidos = 0, mantidos = 0;
+    CAMPOS_TEXTO_IA.forEach(function (k) {
+      if (!c[k]) return;
+      if (limpar($(k).value)) { mantidos++; return; }
+      $(k).value = c[k];
+      atualizarContador(k);
+      marcarSugerido(k);
+      preenchidos++;
+    });
+    if (c.unidade) {
+      if ($('unidade').value) mantidos++;
+      else { $('unidade').value = c.unidade; alternarUnidadeOutra(); marcarSugerido('unidade'); preenchidos++; }
+    }
+    ['maturidade', 'valorEstimado', 'horizonte'].forEach(function (k) {
+      if (!c[k]) return;
+      if (form.querySelector('input[name="' + k + '"]:checked')) { mantidos++; return; }
+      var opcao = Array.prototype.filter.call(form.querySelectorAll('input[name="' + k + '"]'), function (i) { return i.value === c[k]; })[0];
+      if (opcao) { opcao.checked = true; marcarSugerido(k); preenchidos++; }
+    });
+    ['areas', 'idiomas'].forEach(function (k) {
+      if (!c[k] || !c[k].length) return;
+      if (form.querySelector('input[name="' + k + '"]:checked')) { mantidos++; return; }
+      Array.prototype.forEach.call(form.querySelectorAll('input[name="' + k + '"]'), function (i) {
+        if (c[k].indexOf(i.value) >= 0) i.checked = true;
+      });
+      marcarSugerido(k);
+      preenchidos++;
+    });
+    atualizarContagemAreas();
+    return { preenchidos: preenchidos, mantidos: mantidos };
+  }
+
+  function aoLerArquivo() {
+    if (!arquivoEscolhido) return;
+    var email = limpar($('email').value).toLowerCase();
+    if (!RE_EMAIL.test(email)) {
+      mostrarEstadoArquivo('Antes de enviar o arquivo, preencha o seu e-mail institucional (acima).', 'erro');
+      $('email').focus();
+      return;
+    }
+    if (!$('consentimentoArquivo').checked) {
+      mostrarEstadoArquivo('Para enviar o arquivo, marque a autorização logo acima do botão.', 'erro');
+      $('consentimentoArquivo').focus();
+      return;
+    }
+    var botao = $('botao-ler-arquivo');
+    botao.disabled = true;
+    mostrarEstadoArquivo('Lendo o arquivo… isso pode levar até um minuto.', 'carregando');
+
+    prepararArquivo(arquivoEscolhido).then(function (arquivo) {
+      if (arquivo.tipo === 'texto' && limpar(arquivo.conteudo, true).length < 50) {
+        return { ok: false, erro: 'Não encontramos texto suficiente no arquivo.' };
+      }
+      return enviarExtracao({
+        acao: 'extrair',
+        email: email,
+        consentimentoArquivo: true,
+        arquivo: arquivo,
+        site: $('site').value,
+        turnstileToken: tokenTurnstile()
+      });
+    }, function (e) {
+      console.error('Falha ao ler o arquivo no navegador:', e);
+      return { ok: false, erro: 'Não foi possível abrir este arquivo no navegador (código A1). Tente salvá-lo como PDF.' };
+    }).then(function (r) {
+      botao.disabled = false;
+      reiniciarTurnstile();
+      if (!r.ok) { mostrarEstadoArquivo(r.erro || 'Não foi possível ler o arquivo.', 'erro'); return; }
+      var conta = preencherComSugestoes(r.campos || {});
+      var msg = conta.preenchidos
+        ? conta.preenchidos + ' campo(s) preenchido(s) a partir do arquivo, marcados em azul. Revise antes de enviar.'
+        : 'O arquivo não trouxe informações para os campos vazios.';
+      if (conta.mantidos) msg += ' ' + conta.mantidos + ' campo(s) que você já tinha preenchido foram mantidos.';
+      var caixa = mostrarEstadoArquivo(msg, 'ok');
+      if (r.observacoes && r.observacoes.length) {
+        caixa.appendChild(el('p', 'estado-subtitulo', 'O arquivo não informa:'));
+        var ul = el('ul');
+        r.observacoes.forEach(function (o) { ul.appendChild(el('li', null, o)); });
+        caixa.appendChild(ul);
+      }
+    }).catch(function (e) {
+      console.error('Falha na leitura do arquivo:', e);
+      botao.disabled = false;
+      mostrarEstadoArquivo('Ocorreu um erro na página ao ler o arquivo (código A2).', 'erro');
+    });
+  }
+
+  function iniciarUpload() {
+    var zona = $('zona-arquivo');
+    $('arquivo').addEventListener('change', function () { escolherArquivo(this.files && this.files[0]); });
+    $('botao-ler-arquivo').addEventListener('click', aoLerArquivo);
+    ['dragenter', 'dragover'].forEach(function (t) {
+      zona.addEventListener(t, function (ev) { ev.preventDefault(); zona.classList.add('arrastando'); });
+    });
+    ['dragleave', 'drop'].forEach(function (t) {
+      zona.addEventListener(t, function (ev) { ev.preventDefault(); zona.classList.remove('arrastando'); });
+    });
+    zona.addEventListener('drop', function (ev) {
+      var arquivos = ev.dataTransfer && ev.dataTransfer.files;
+      if (arquivos && arquivos.length) escolherArquivo(arquivos[0]);
+    });
+  }
+
   /* ---------- resultados ---------- */
 
   var CRITERIOS = [
@@ -628,6 +899,7 @@
     $('unidade').addEventListener('change', alternarUnidadeOutra);
     $('opcoes-areas').addEventListener('change', atualizarContagemAreas);
     form.addEventListener('submit', aoEnviar);
+    iniciarUpload();
     iniciarTurnstile();
     if (MODO_MOCK) {
       var aviso = el('p', 'aviso-mock', 'Modo de teste: nada é enviado; o resultado é um exemplo fixo.');

@@ -8,14 +8,14 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Fioconecta · Matching de Oportunidades</title>
   <meta name="description" content="Apresente seu projeto e receba sugestões de editais e financiadores aderentes, a partir da base curada pelo Escritório de Captação da Fiocruz.">
-  <link rel="stylesheet" href="styles.css?v=7">
+  <link rel="stylesheet" href="styles.css?v=8">
 </head>
 <body>
   <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
   <header class="topo">
     <div class="topo-interno">
-      <img class="logo" src="img/logo-fiocruz.webp?v=7" alt="Fiocruz" width="164" height="46">
+      <img class="logo" src="img/logo-fiocruz.webp?v=8" alt="Fiocruz" width="164" height="46">
       <div class="topo-textos">
         <p class="sobretitulo">Escritório de Captação de Recursos · Presidência da Fiocruz</p>
         <h1>Fioconecta · Matching de Oportunidades</h1>
@@ -67,6 +67,30 @@
           <p id="unidadeOutra-erro" class="erro" hidden></p>
         </div>
       </fieldset>
+
+      <section class="bloco upload" aria-labelledby="titulo-upload">
+        <h2 id="titulo-upload" class="upload-titulo">Preencher a partir de um arquivo <span class="opcional">(opcional)</span></h2>
+        <p class="ajuda" id="upload-ajuda">Envie o documento do projeto (PDF, DOCX ou TXT, até 10 MB). A IA sugere o preenchimento dos <strong>campos ainda vazios</strong> abaixo; você revisa tudo antes de enviar. O arquivo não é guardado.</p>
+
+        <div id="zona-arquivo" class="zona-arquivo">
+          <p class="zona-texto">Arraste o arquivo para cá ou</p>
+          <input id="arquivo" class="visualmente-oculto" type="file"
+                 accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+                 aria-describedby="upload-ajuda arquivo-nome">
+          <label for="arquivo" class="botao-secundario">Escolher arquivo</label>
+          <p id="arquivo-nome" class="arquivo-nome"></p>
+        </div>
+
+        <div class="campo consentimento consentimento-arquivo">
+          <input id="consentimentoArquivo" type="checkbox">
+          <label for="consentimentoArquivo">Autorizo o envio do arquivo inteiro, inclusive eventuais dados pessoais que ele contenha, a um serviço de IA externo, apenas para sugerir o preenchimento deste formulário.</label>
+        </div>
+
+        <div class="acoes-upload">
+          <button type="button" id="botao-ler-arquivo" class="botao-secundario" disabled>Ler arquivo e preencher</button>
+        </div>
+        <div id="estado-arquivo" class="estado-arquivo" role="status" aria-live="polite"></div>
+      </section>
 
       <fieldset class="bloco">
         <legend>Sobre o projeto</legend>
@@ -191,7 +215,7 @@
     <p>Sugestões geradas com apoio de IA a partir da base curada pelo Escritório de Captação. Não constituem decisão institucional. O Escritório entrará em contato.</p>
   </footer>
 
-  <script src="config.js?v=7"></script>
-  <script src="app.js?v=7"></script>
+  <script src="config.js?v=8"></script>
+  <script src="app.js?v=8"></script>
 </body>
 </html>

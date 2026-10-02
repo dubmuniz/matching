@@ -66,22 +66,33 @@ function executarMatchingIA_(cfg, demanda, oportunidades, financiadores) {
   throw new Error('Resposta da IA inválida após 2 tentativas: ' + ultimoErro);
 }
 
+function chamarClaudeMatching_(cfg, textoUsuario) {
+  return chamarClaude_(cfg, {
+    system: SYSTEM_PROMPT_MATCHING,
+    conteudo: textoUsuario,
+    schema: SCHEMA_RESPOSTA_MATCHING,
+    maxTokens: cfg.maxTokens
+  });
+}
+
 /**
  * Uma chamada a /v1/messages, com novas tentativas para erros temporários
  * (429, 500, 502, 503, 504, 529 e falhas de rede).
+ * @param {{ system: string, conteudo: (string|Object[]), schema: Object, maxTokens: number }} pedido
+ *   conteudo: texto, ou lista de blocos (ex.: documento PDF + texto)
  * @return {{ texto: string, stopReason: string, uso: Object }}
  */
-function chamarClaudeMatching_(cfg, textoUsuario) {
+function chamarClaude_(cfg, pedido) {
   var corpo = {
     model: cfg.modelo,
-    max_tokens: cfg.maxTokens,
-    system: SYSTEM_PROMPT_MATCHING,
-    messages: [{ role: 'user', content: textoUsuario }],
+    max_tokens: pedido.maxTokens,
+    system: pedido.system,
+    messages: [{ role: 'user', content: pedido.conteudo }],
     thinking: { type: 'adaptive' },
     output_config: { effort: cfg.esforco }
   };
-  if (CONFIG_MATCHING.USAR_SAIDA_ESTRUTURADA) {
-    corpo.output_config.format = { type: 'json_schema', schema: SCHEMA_RESPOSTA_MATCHING };
+  if (CONFIG_MATCHING.USAR_SAIDA_ESTRUTURADA && pedido.schema) {
+    corpo.output_config.format = { type: 'json_schema', schema: pedido.schema };
   }
 
   var opcoes = {

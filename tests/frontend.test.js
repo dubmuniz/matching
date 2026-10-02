@@ -97,3 +97,35 @@ test('mock segue o formato da resposta do servidor', () => {
     'integridade_aviso', 'website'];
   r.financiadores.forEach(c => assert.deepEqual(Object.keys(c).sort(), [...camposFin].sort()));
 });
+
+// ---------------- Fase 2A: leitura de arquivos no navegador ----------------
+
+test('tipoDoArquivo', () => {
+  assert.equal(F.tipoDoArquivo('Projeto.PDF', ''), 'pdf');
+  assert.equal(F.tipoDoArquivo('p.docx', ''), 'docx');
+  assert.equal(F.tipoDoArquivo('notas.txt', ''), 'txt');
+  assert.equal(F.tipoDoArquivo('x', 'application/pdf'), 'pdf');
+  assert.equal(F.tipoDoArquivo('p.doc', 'application/msword'), '');
+  assert.equal(F.tipoDoArquivo('virus.exe', ''), '');
+});
+
+const TEXTO_ESPERADO = 'Vigilância de arboviroses\nObjetivo: alertas precoces & integração <dados>.\nCélula A\tB';
+
+for (const arquivo of ['exemplo.docx', 'exemplo-sem-compressao.docx']) {
+  test('textoDeDocx lê ' + arquivo, async () => {
+    const bytes = fs.readFileSync(path.join(__dirname, 'fixtures', arquivo));
+    const ab = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+    assert.equal(await F.textoDeDocx(ab), TEXTO_ESPERADO);
+  });
+}
+
+test('textoDeDocx recusa arquivo que não é zip', async () => {
+  await assert.rejects(F.textoDeDocx(new TextEncoder().encode('não sou um docx').buffer));
+});
+
+test('index.html: área de upload com label, autorização e botão', () => {
+  const html = fs.readFileSync(path.join(DOCS, 'index.html'), 'utf8');
+  assert.match(html, /id="arquivo"[^>]*type="file"/);
+  assert.match(html, /for="consentimentoArquivo"/);
+  assert.match(html, /id="botao-ler-arquivo"/);
+});
