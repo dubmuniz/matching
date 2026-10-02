@@ -37,6 +37,7 @@ function doPost(e) {
 
 var CHAVE_ULTIMOS_ERROS_ = 'ULTIMOS_ERROS';
 var MAX_ERROS_GUARDADOS_ = 10;
+var LIMITE_BYTES_ERROS_ = 7000; // margem abaixo do limite de 9 KB por propriedade (acentos ocupam 2 bytes)
 
 /**
  * Registra um erro no console e guarda os últimos erros nas Propriedades do script,
@@ -46,7 +47,7 @@ var MAX_ERROS_GUARDADOS_ = 10;
  */
 function registrarErro_(contexto, err) {
   var ref = Utilities.getUuid().slice(0, 8).toUpperCase();
-  var detalhe = String(err && err.stack ? err.stack : err).slice(0, 1500);
+  var detalhe = String(err && err.stack ? err.stack : err).slice(0, 1200);
   console.error('[' + ref + '] ' + contexto + ': ' + detalhe);
   try {
     var props = PropertiesService.getScriptProperties();
@@ -57,7 +58,14 @@ function registrarErro_(contexto, err) {
       contexto: contexto,
       detalhe: detalhe
     });
-    props.setProperty(CHAVE_ULTIMOS_ERROS_, JSON.stringify(lista.slice(0, MAX_ERROS_GUARDADOS_)));
+    // Cada propriedade guarda no máximo 9 KB: descarta os erros mais antigos até caber.
+    lista = lista.slice(0, MAX_ERROS_GUARDADOS_);
+    var json = JSON.stringify(lista);
+    while (tamanhoEmBytes_(json) > LIMITE_BYTES_ERROS_ && lista.length > 1) {
+      lista.pop();
+      json = JSON.stringify(lista);
+    }
+    props.setProperty(CHAVE_ULTIMOS_ERROS_, json);
   } catch (e) {
     console.error('Não foi possível guardar o erro: ' + e);
   }

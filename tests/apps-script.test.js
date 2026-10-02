@@ -340,3 +340,16 @@ test('testarValidacao(): todas as entradas inválidas são rejeitadas', () => {
   assert.ok(!saida.includes('ACEITO'), saida);
   assert.equal((saida.match(/✓ rejeitado/g) || []).length, 10);
 });
+
+test('registrarErro_: a lista de erros nunca passa do limite de uma propriedade', () => {
+  const { ctx } = criarContexto(montarPlanilha());
+  for (let i = 0; i < 25; i++) {
+    const e = new Error('falha número ' + i + ' ' + 'ç'.repeat(2000));
+    ctx.registrarErro_('teste', e);
+  }
+  const json = ctx.PropertiesService.getScriptProperties().getProperty('ULTIMOS_ERROS');
+  assert.ok(Buffer.byteLength(json, 'utf8') < 9 * 1024, 'cabe em 9 KB');
+  const lista = JSON.parse(json);
+  assert.ok(lista.length >= 1 && lista.length <= 10);
+  assert.match(lista[0].detalhe, /falha número 24/);   // o mais recente fica
+});
