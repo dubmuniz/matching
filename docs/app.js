@@ -311,7 +311,6 @@
       horizonte: radio('horizonte'),
       parceiros: $('parceiros').value,
       idiomas: marcados('idiomas'),
-      idiomaProposta: radio('idiomaProposta') || 'Português',
       consentimento: $('consentimento').checked,
       site: $('site').value,
       turnstileToken: tokenTurnstile()
@@ -778,7 +777,9 @@
   function gerarProposta(c, botao, estado) {
     if (gerandoProposta) return;
     if (!ultimaDemanda) { mensagemEstado(estado, 'Refaça o matching antes de gerar a proposta.', 'erro'); return; }
-    var idioma = ultimaDemanda.idiomaProposta || 'Português';
+    // O idioma é lido na hora (pode ser trocado depois do matching) e não vai no envio do matching.
+    var marcado = form.querySelector('input[name="idiomaProposta"]:checked');
+    var idioma = marcado ? marcado.value : 'Português';
     gerandoProposta = true;
     var botoes = document.querySelectorAll('.botao-proposta');
     Array.prototype.forEach.call(botoes, function (b) { b.disabled = true; });

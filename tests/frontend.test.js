@@ -129,3 +129,10 @@ test('index.html: área de upload com label, autorização e botão', () => {
   assert.match(html, /for="consentimentoArquivo"/);
   assert.match(html, /id="botao-ler-arquivo"/);
 });
+
+test('envio do matching não leva campos que só a proposta usa (compatível com servidor desatualizado)', () => {
+  const codigo = fs.readFileSync(path.join(DOCS, 'app.js'), 'utf8');
+  const leitura = codigo.slice(codigo.indexOf('function lerFormulario'), codigo.indexOf('function elementoDoCampo'));
+  assert.ok(leitura.length > 100);
+  assert.ok(!/idiomaProposta/.test(leitura), 'idiomaProposta é lido só ao gerar a proposta');
+});
