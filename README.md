@@ -174,6 +174,7 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 | "…(código A1)" / "(código A2)" no upload | o navegador não conseguiu abrir o arquivo (ex.: DOCX corrompido ou navegador antigo) | salvar como PDF e tentar de novo |
 | "Não foi possível gerar esta parte da proposta…" | a IA falhou ou demorou demais | tente de novo; se repetir, `verUltimosErros()` |
 | "Este edital não está mais disponível…" | o edital foi desativado, marcado como vedado ou saiu da planilha | refaça o matching |
+| "(código V1)" ao gerar a proposta | o Apps Script publicado ainda não tem a fase 2B | cole `Proposta`, `Seguranca`, `Codigo` e `Testes` atualizados e crie uma **nova versão** da implantação (seção 8) |
 | "(código X1)" ao gerar a proposta | o navegador não conseguiu montar a planilha | atualize o navegador e tente de novo |
 | Página antiga ou sem estilo | cache | Ctrl+Shift+R; confira se o `?v=N` foi aumentado |
 | Edital com integridade "Não avaliado" que deveria ter status | nome do parceiro diferente nas duas abas | `diagnosticoBase()` lista os casos; iguale a grafia |

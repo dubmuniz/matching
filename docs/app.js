@@ -768,6 +768,17 @@
     return bloco;
   }
 
+  /** Mensagem de erro de uma parte da proposta, com diagnóstico para servidor desatualizado. */
+  function erroDaProposta(r, padrao) {
+    if (r && r.campos) {
+      // Servidor sem a fase 2B: trata o pedido como matching e recusa os campos "acao", "parte"...
+      console.error('Pedido de proposta recusado como formulário:', r);
+      return 'O serviço ainda não reconhece o pedido de rascunho de proposta (código V1). ' +
+        'O Apps Script precisa ser atualizado para a versão com a fase 2B e implantado em uma nova versão.';
+    }
+    return (r && r.erro) || padrao;
+  }
+
   function mensagemEstado(estado, texto, tipo) {
     estado.textContent = '';
     estado.className = 'estado-proposta' + (tipo ? ' estado-' + tipo : '');
@@ -791,12 +802,12 @@
     mensagemEstado(estado, 'Etapa 1 de 2: ficha de identificação e marco lógico (até 1 minuto)…', 'carregando');
     var parte1;
     pedirParteProposta(1, c, idioma).then(function (r1) {
-      if (!r1 || !r1.ok) throw { mensagem: (r1 && r1.erro) || 'Não foi possível gerar a primeira parte.' };
+      if (!r1 || !r1.ok) throw { mensagem: erroDaProposta(r1, 'Não foi possível gerar a primeira parte.') };
       parte1 = r1;
       mensagemEstado(estado, 'Etapa 2 de 2: orçamento e cronograma (até 1 minuto)…', 'carregando');
       return pedirParteProposta(2, c, idioma, window.PropostaXlsx.outputsDoMarco(r1.marco));
     }).then(function (r2) {
-      if (!r2 || !r2.ok) throw { mensagem: (r2 && r2.erro) || 'Não foi possível gerar a segunda parte.' };
+      if (!r2 || !r2.ok) throw { mensagem: erroDaProposta(r2, 'Não foi possível gerar a segunda parte.') };
       var dados = {
         idioma: idioma, geradoEm: hojeTexto(), demanda: ultimaDemanda, edital: parte1.edital,
         duracao: parte1.duracao, parte1: parte1, parte2: r2
