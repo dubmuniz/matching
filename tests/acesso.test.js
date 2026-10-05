@@ -131,8 +131,19 @@ test('login: código por e-mail, passe e registro na aba Acessos', () => {
   assert.equal(r2.email, 'maria@fiocruz.br');
   assert.match(r2.passe, /^maria@fiocruz\.br\|\d+\|[A-Za-z0-9_-]+$/);
 
-  // O código só vale uma vez.
+  // O login já traz a lista (um pedido a menos), sem colunas internas.
+  assert.equal(r2.login, true);
+  assert.deepEqual(r2.oportunidades.map(o => o.id), ['LINHA-3', 'OPP-0001']);
+  assert.ok(!JSON.stringify(r2).includes('SEGREDO-PONTO-FOCAL'));
+
+  // Repetir "entrar" com o mesmo código logo depois (resposta perdida no caminho) devolve o mesmo passe,
+  // sem novo registro. Passados 3 minutos, o código não vale mais.
+  const repetido = postar(ctx, { acao: 'entrar', email: 'maria@fiocruz.br', codigo, site: '' });
+  assert.equal(repetido.passe, r2.passe);
+  Object.keys(cache).filter(k => k.startsWith('ENTRADA_')).forEach(k => delete cache[k]);
   assert.match(postar(ctx, { acao: 'entrar', email: 'maria@fiocruz.br', codigo, site: '' }).erro, /expirou/);
+  // Código errado não aproveita a resposta guardada.
+  assert.equal(postar(ctx, { acao: 'entrar', email: 'maria@fiocruz.br', codigo: codigo === '000000' ? '111111' : '000000', site: '' }).ok, false);
 
   const r3 = postar(ctx, { acao: 'oportunidades', passe: r2.passe });
   assert.equal(r3.ok, true);
@@ -140,12 +151,40 @@ test('login: código por e-mail, passe e registro na aba Acessos', () => {
   assert.equal(r3.email, 'maria@fiocruz.br');
 
   assert.deepEqual(abas.Acessos.matriz[0], ['Data/hora', 'E-mail', 'Evento', 'Detalhe']);
-  assert.deepEqual(eventos(abas), ['Código enviado', 'Login confirmado', 'Lista de oportunidades']);
+  // A lista logo depois do login não ganha linha própria (o login já foi registrado).
+  assert.deepEqual(eventos(abas), ['Código enviado', 'Login confirmado']);
   assert.equal(Object.prototype.toString.call(abas.Acessos.matriz[1][0]), '[object Date]');
   assert.equal(abas.Acessos.matriz[1][1], 'maria@fiocruz.br');
-  // A lista é registrada no máximo a cada 6 horas por e-mail.
-  postar(ctx, { acao: 'oportunidades', passe: r2.passe });
-  assert.equal(eventos(abas).length, 3);
+});
+
+test('lista: registrada no máximo a cada 6 horas por e-mail', () => {
+  const abas = montarPlanilha();
+  const { ctx } = criarContexto(abas, [], LOGIN);
+  const passe = ctx.emitirPasse_('maria@fiocruz.br', Date.now()).passe;
+  postar(ctx, { acao: 'oportunidades', passe });
+  postar(ctx, { acao: 'oportunidades', passe });
+  assert.deepEqual(eventos(abas), ['Lista de oportunidades']);
+});
+
+test('planilha: cada aba é lida de uma vez (não coluna por coluna)', () => {
+  const abas = montarPlanilha();
+  const leituras = {};
+  for (const nome of ['Oportunidades', 'Organizações']) {
+    const original = abas[nome].getRange;
+    abas[nome].getRange = (...args) => {
+      const r = original(...args);
+      for (const m of ['getValues', 'getDisplayValues', 'getRichTextValues']) {
+        const f = r[m];
+        r[m] = () => { leituras[nome] = (leituras[nome] || 0) + 1; return f(); };
+      }
+      return r;
+    };
+  }
+  const { ctx } = criarContexto(abas);
+  ctx.carregarBaseMatching_(ctx.obterConfigMatching_(), '2026-09-25');
+  // cabeçalho + todos os textos + uma leitura por coluna de data ou de link
+  assert.equal(leituras.Oportunidades, 4);
+  assert.equal(leituras['Organizações'], 3);
 });
 
 test('login: e-mail fora dos domínios não recebe código', () => {
@@ -341,4 +380,19 @@ test('login: pedidos para e-mails sem acesso também contam no limite global (e 
   for (let i = 0; i < 35; i++) postar(ctx, { acao: 'codigo', email: `robo${i}@exemplo.org`, site: '', turnstileToken: '' });
   assert.equal(eventos(abas).length, 30);
   assert.match(postar(ctx, { acao: 'codigo', email: 'maria@fiocruz.br', site: '', turnstileToken: '' }).erro, /Muitos pedidos/);
+});
+
+test('login: depois de entrar, palpites errados continuam limitados a 5', () => {
+  const { ctx, emails } = criarContexto(montarPlanilha(), [], LOGIN);
+  const r = entrar(ctx, emails);
+  assert.equal(r.ok, true);
+  const certo = emails[emails.length - 1].subject.match(/(\d{6})$/)[1];
+  const errado = certo === '000000' ? '111111' : '000000';
+  for (let i = 0; i < 5; i++) {
+    const t = postar(ctx, { acao: 'entrar', email: 'maria@fiocruz.br', codigo: errado, site: '' });
+    assert.equal(t.ok, false);
+    assert.equal(t.passe, undefined);
+  }
+  // Depois de 5 palpites errados, nem o código certo devolve o passe guardado.
+  assert.match(postar(ctx, { acao: 'entrar', email: 'maria@fiocruz.br', codigo: certo, site: '' }).erro, /expirou/);
 });

@@ -58,7 +58,8 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 - Aba `Acessos` (Data/hora, E-mail, Evento, Detalhe): logins, recusas e cada uso. O código nunca é gravado. Retenção `RETENCAO_ACESSOS_MESES` (padrão 12), limpeza automática após login (no máximo a cada 6 h) e por `limparAcessosAntigos()`. Turnstile e limite de taxa vêm antes de qualquer gravação.
 - Lista (`acao: "oportunidades"`): só candidatos (ativos e não vedados), só colunas públicas, 10 min em cache. Nada passa pela IA.
 - Avaliação de um edital: matching com `idOportunidade`; só esse edital vai para a IA (sem financiadores), com `PROMPT_AVALIACAO_INDIVIDUAL` (`PROMPT_VERSAO_INDIVIDUAL`, mesma regra de versão); o card aparece qualquer que seja a nota. Cota própria (10 por e-mail/24 h, 30/h). Grava em Demandas (coluna `Edital avaliado`, criada à direita) e avisa o Escritório, sem cópia ao pesquisador.
-- Página: telas por endereço (`#oportunidades`, `#avaliar`, `#avaliar/<ID>`), passe no `localStorage`. Implantar o Apps Script antes de publicar a página.
+- Página: telas por endereço (`#oportunidades`, `#avaliar`, `#avaliar/<ID>`), passe e última lista no `localStorage` (apagados em *Sair*). A resposta de `entrar` já traz a lista; `entrar` repetido com o mesmo código em até 3 min devolve o mesmo passe. Só `oportunidades` e `entrar` são repetidos automaticamente após falha de comunicação (nunca matching, extração ou proposta). Implantar o Apps Script antes de publicar a página.
+- Planilha: cada aba é lida de uma vez (`getDisplayValues` do intervalo todo), mais uma leitura por coluna de data ou de link.
 
 ## Testes e fluxo
 - Funções puras (`Prazo.gs`, `Preselecao.gs`) rodam no Apps Script e no Node (`if (typeof module !== 'undefined') module.exports = {...}`). Testes: `node --test` (descobre `tests/*.test.js`). `tests/apps-script.test.js` carrega todos os `.gs` com serviços simulados e confere colisão de nomes com o script existente.

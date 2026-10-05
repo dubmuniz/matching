@@ -86,22 +86,24 @@ function processarListaOportunidades_(dados, cfg, sessao) {
     return falha_(limite.motivo === 'ocupado' ? 'ocupado' : 'limiteLista');
   }
 
+  var lista = listaDeOportunidades_(cfg);
+  registrarAcessoALista_(cfg, sessao.email);
+  return { ok: true, login: cfg.loginAtivo, email: sessao.email, oportunidades: lista };
+}
+
+/** Lista pronta, do cache (10 minutos) ou montada a partir da planilha. Também usada no login. */
+function listaDeOportunidades_(cfg) {
   var hoje = hojeSaoPaulo_();
   var cache = CacheService.getScriptCache();
   var chave = 'CATALOGO_' + hoje;
-  var lista = null;
   var guardada = cache.get(chave);
   if (guardada) {
-    try { lista = JSON.parse(guardada); } catch (e) { lista = null; }
+    try { return JSON.parse(guardada); } catch (e) { /* monta de novo */ }
   }
-  if (!lista) {
-    lista = montarCatalogo(carregarBaseMatching_(cfg, hoje).candidatos);
-    var json = JSON.stringify(lista);
-    if (json.length < MAX_CACHE_CATALOGO_) cache.put(chave, json, VALIDADE_CACHE_CATALOGO_S);
-  }
-
-  registrarAcessoALista_(cfg, sessao.email);
-  return { ok: true, login: cfg.loginAtivo, email: sessao.email, oportunidades: lista };
+  var lista = montarCatalogo(carregarBaseMatching_(cfg, hoje).candidatos);
+  var json = JSON.stringify(lista);
+  if (tamanhoEmBytes_(json) < MAX_CACHE_CATALOGO_) cache.put(chave, json, VALIDADE_CACHE_CATALOGO_S);
+  return lista;
 }
 
 if (typeof module !== 'undefined') {

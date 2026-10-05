@@ -156,6 +156,7 @@ Funções de apoio:
 - A aba **Acessos** é criada sozinha, com uma linha por evento: *Código enviado*, *Login confirmado*, *Código incorreto*, *Código bloqueado*, *Acesso recusado* (e-mail sem acesso), *Lista de oportunidades* (no máximo uma vez a cada 6 horas por pessoa), *Matching*, *Avaliação de edital*, *Leitura de arquivo* e *Proposta*. O código nunca é gravado.
 - Para tirar o acesso de alguém: coloque o e-mail em `EMAILS_BLOQUEADOS`. Para desconectar todo mundo: apague `SEGREDO_PASSE`.
 - Cada código gasta 1 e-mail da cota diária do Apps Script (seção 11).
+- Velocidade: a resposta do login já traz a lista de oportunidades, e a última lista fica guardada no navegador (aparece na hora na próxima visita, enquanto a atual chega). *Sair* apaga a sessão e a lista guardadas. Se o Google devolver um erro passageiro (como o 404 do código R2) ao carregar a lista ou ao entrar, a página repete o pedido uma vez sozinha.
 
 ## 7. Publicar a página no GitHub Pages
 
@@ -189,7 +190,7 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 |---|---|---|
 | "A página ainda não foi configurada" | `webAppUrl` vazio em `docs/config.js` | seção 6, passo 5 |
 | "Não foi possível falar com o serviço (código R1)" | sem internet, URL errada ou implantação desativada | confira a URL abrindo-a no navegador (deve mostrar `{"ok":true}`) |
-| "…formato inesperado (código R2…)" | o Google devolveu uma página no lugar dos dados, geralmente porque a implantação não está como **"Qualquer pessoa"** | seção 6, passo 2, com uma nova versão |
+| "…formato inesperado (código R2…)" | o Google devolveu uma página no lugar dos dados. Se acontece sempre, a implantação provavelmente não está como **"Qualquer pessoa"**. Se é de vez em quando (HTTP 404), é instabilidade do Google: a lista e o login já repetem o pedido sozinhos; nos outros casos, tente de novo | seção 6, passo 2, com uma nova versão |
 | "…formato inesperado (código P1)" | resposta sem resultado, por exemplo quando o envio foi redirecionado ao `doGet` (várias contas Google logadas) | teste numa janela anônima e avise quem desenvolve |
 | "Ocorreu um erro inesperado… (ref. XXXXXXXX)" | erro no servidor | rode `verUltimosErros()` e procure o mesmo código `ref.` |
 | "Não conseguimos gerar as sugestões agora…" | a IA falhou, mas a demanda foi registrada e o Escritório foi avisado | `verUltimosErros()`; confira a chave da API e o saldo |

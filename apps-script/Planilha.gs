@@ -98,24 +98,27 @@ function lerColunasPorCabecalho_(sheet, colunas, opcoes) {
   var links = opcoes.links || [];
   var colunasLidas = {};
 
-  Object.keys(posicoes).forEach(function (campo) {
-    var range = sheet.getRange(linhaCab + 1, posicoes[campo], n, 1);
-    var exibidos = range.getDisplayValues();
-    var saida = new Array(n);
+  // Uma leitura só para todos os textos da aba (ler coluna por coluna é bem mais lento).
+  // Datas e links ainda precisam de uma leitura própria, só nas colunas que os usam.
+  var exibidosTodos = ultimaCol > 0 ? sheet.getRange(linhaCab + 1, 1, n, ultimaCol).getDisplayValues() : [];
 
+  Object.keys(posicoes).forEach(function (campo) {
+    var col = posicoes[campo];
+    var saida = new Array(n);
+    var i;
     if (datas.indexOf(campo) >= 0) {
-      var valores = range.getValues();
-      for (var i = 0; i < n; i++) {
+      var valores = sheet.getRange(linhaCab + 1, col, n, 1).getValues();
+      for (i = 0; i < n; i++) {
         var v = valores[i][0];
-        saida[i] = (v instanceof Date) ? Utilities.formatDate(v, fuso, 'dd/MM/yyyy') : String(exibidos[i][0] || '');
+        saida[i] = (v instanceof Date) ? Utilities.formatDate(v, fuso, 'dd/MM/yyyy') : String(exibidosTodos[i][col - 1] || '');
       }
     } else if (links.indexOf(campo) >= 0) {
-      var ricos = range.getRichTextValues();
-      for (var j = 0; j < n; j++) {
-        saida[j] = urlDoTextoRico_(ricos[j][0]) || String(exibidos[j][0] || '');
+      var ricos = sheet.getRange(linhaCab + 1, col, n, 1).getRichTextValues();
+      for (i = 0; i < n; i++) {
+        saida[i] = urlDoTextoRico_(ricos[i][0]) || String(exibidosTodos[i][col - 1] || '');
       }
     } else {
-      for (var k = 0; k < n; k++) saida[k] = String(exibidos[k][0] || '');
+      for (i = 0; i < n; i++) saida[i] = String(exibidosTodos[i][col - 1] || '');
     }
     colunasLidas[campo] = saida;
   });

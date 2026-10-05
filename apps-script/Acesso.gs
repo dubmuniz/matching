@@ -13,6 +13,8 @@
  * - Cada login e cada uso ficam na aba Acessos (data/hora, e-mail, evento, detalhe), por
  *   RETENCAO_ACESSOS_MESES (padrão 12). As linhas mais antigas são apagadas automaticamente.
  * - LOGIN_ATIVO=nao desliga o login (o formulário volta a aceitar qualquer e-mail).
+ * - A resposta de "entrar" já traz a lista de oportunidades (economiza um pedido). Se a página repetir
+ *   "entrar" com o mesmo código em até 3 minutos (resposta perdida no caminho), recebe o mesmo passe.
  *
  * Funções puras (emailPermitidoParaLogin, codigoDeHex, iguaisEmTempoConstante, separarPasse,
  * linhasDeAcessoVencidas) são testadas no Node (tests/acesso.test.js).
@@ -23,6 +25,8 @@ var VALIDADE_CODIGO_SEGUNDOS = 600;
 var MAX_TENTATIVAS_CODIGO = 5;
 var PREFIXO_CODIGO_ = 'CODIGO_LOGIN_';
 var PREFIXO_ACESSO_LISTA_ = 'ACESSO_LISTA_';
+var PREFIXO_ENTRADA_ = 'ENTRADA_';
+var VALIDADE_ENTRADA_REPETIDA_S = 180;  // a página pode repetir "entrar" se a resposta se perder no caminho
 var CHAVE_LIMPEZA_ACESSOS_ = 'LIMPEZA_ACESSOS';
 var CABECALHO_ACESSOS = ['Data/hora', 'E-mail', 'Evento', 'Detalhe'];
 
@@ -275,17 +279,35 @@ function processarEntrada_(dados) {
   var cfg = obterConfigMatching_();
   if (!cfg.loginAtivo) return falhaAcesso_('desligado');
 
+  var cache = CacheService.getScriptCache();
+  var chaveEntrada = PREFIXO_ENTRADA_ + hashTexto_(email);
+  var hashDoCodigo = hashCodigo_(email, codigo);
+
   var trava = LockService.getScriptLock();
   if (!trava.tryLock(10000)) return falhaAcesso_('ocupado');
   var resultado;
   try {
-    var cache = CacheService.getScriptCache();
+    // Repetição do mesmo "entrar" (resposta perdida no caminho): mesmo passe, e só com o código certo.
+    // Palpites errados também contam aqui, para não haver palpites ilimitados depois de um login.
+    var repetida = null;
+    try { repetida = JSON.parse(cache.get(chaveEntrada) || 'null'); } catch (e) { repetida = null; }
+    if (repetida && typeof repetida.h === 'string') {
+      if (iguaisEmTempoConstante(hashDoCodigo, repetida.h)) {
+        if (verificarPasse_(cfg, repetida.passe, Date.now()).ok) resultado = { repetida: repetida };
+      } else {
+        repetida.n = (Number(repetida.n) || 0) + 1;
+        if (repetida.n >= MAX_TENTATIVAS_CODIGO) cache.remove(chaveEntrada);
+        else cache.put(chaveEntrada, JSON.stringify(repetida), VALIDADE_ENTRADA_REPETIDA_S);
+      }
+    }
     var chave = chaveCodigo_(email);
     var reg = null;
     try { reg = JSON.parse(cache.get(chave) || 'null'); } catch (e) { reg = null; }
-    if (!reg || typeof reg.h !== 'string') {
+    if (resultado) {
+      // já resolvido pela repetição
+    } else if (!reg || typeof reg.h !== 'string') {
       resultado = { falha: 'codigoExpirado' };
-    } else if (!iguaisEmTempoConstante(hashCodigo_(email, codigo), reg.h)) {
+    } else if (!iguaisEmTempoConstante(hashDoCodigo, reg.h)) {
       reg.n = (Number(reg.n) || 0) + 1;
       if (reg.n >= MAX_TENTATIVAS_CODIGO) {
         cache.remove(chave);
@@ -304,6 +326,7 @@ function processarEntrada_(dados) {
     trava.releaseLock();
   }
 
+  if (resultado.repetida) return respostaDeEntrada_(cfg, email, resultado.repetida.passe, resultado.repetida.expira);
   if (!resultado.ok) {
     if (resultado.evento) registrarAcesso_(cfg, email, resultado.evento, resultado.detalhe);
     return falhaAcesso_(resultado.falha);
@@ -312,9 +335,23 @@ function processarEntrada_(dados) {
 
   var passe = emitirPasse_(email, Date.now());
   var expira = Utilities.formatDate(new Date(passe.validade), CONFIG_MATCHING.FUSO, 'dd/MM/yyyy');
+  cache.put(chaveEntrada, JSON.stringify({ h: hashDoCodigo, n: 0, passe: passe.passe, expira: expira }), VALIDADE_ENTRADA_REPETIDA_S);
   registrarAcesso_(cfg, email, 'Login confirmado', 'passe válido até ' + expira);
+  // O login já foi registrado: o acesso à lista logo em seguida não precisa de outra linha.
+  cache.put(PREFIXO_ACESSO_LISTA_ + hashTexto_(email), '1', 6 * 60 * 60);
   limparAcessosSeNecessario_(cfg);
-  return { ok: true, passe: passe.passe, email: email, expira: expira };
+  return respostaDeEntrada_(cfg, email, passe.passe, expira);
+}
+
+/** Passe + lista de oportunidades. Se a lista falhar, a página a pede em seguida. */
+function respostaDeEntrada_(cfg, email, passe, expira) {
+  var r = { ok: true, passe: passe, email: email, expira: expira, login: true };
+  try {
+    r.oportunidades = listaDeOportunidades_(cfg);
+  } catch (err) {
+    registrarErro_('Login: falha ao montar a lista de oportunidades', err);
+  }
+  return r;
 }
 
 /* =====================================================================
@@ -355,7 +392,8 @@ function registrarAcessoALista_(cfg, email) {
 
 /**
  * Apaga da aba Acessos as linhas com mais de RETENCAO_ACESSOS_MESES meses (padrão 12).
- * Roda sozinha no máximo a cada 6 horas (depois de um login); também pode ser rodada pelo editor.
+ * Roda sozinha no máximo a cada 6 horas (depois de um login; é rápida: lê uma coluna). Também pode
+ * ser rodada pelo editor.
  */
 function limparAcessosAntigos() {
   var cfg = obterConfigMatching_();

@@ -430,11 +430,31 @@
     });
   }
 
+  // Pedidos que podem ser repetidos sem efeito colateral: ler a lista e "entrar" (o servidor devolve
+  // o mesmo passe se o código for repetido em até 3 minutos). Matching, leitura de arquivo e proposta
+  // não são repetidos: gastariam cota e duplicariam registros.
+  var REPETIVEIS = { oportunidades: true, entrar: true };
+
   function enviarAoServico(dados) {
     if (MODO_MOCK) return respostaMock(MODO_MOCK, dados);
     if (!CONFIG.webAppUrl) {
       return Promise.resolve({ ok: false, erro: 'A página ainda não foi configurada (falta a URL do serviço). Avise o Escritório de Captação.' });
     }
+    return umaTentativa(dados).then(function (r) {
+      if (r._transitorio && REPETIVEIS[dados.acao]) {
+        // O Google às vezes devolve 404 ou perde a resposta; uma nova tentativa costuma funcionar.
+        console.warn('Falha passageira do serviço; repetindo o pedido "' + dados.acao + '".');
+        return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () { return umaTentativa(dados); });
+      }
+      return r;
+    }).then(function (r) {
+      delete r._transitorio;
+      return r;
+    });
+  }
+
+  /** Um envio. Falhas de comunicação voltam com _transitorio: true (exceto tempo esgotado). */
+  function umaTentativa(dados) {
     var controle = typeof AbortController !== 'undefined' ? new AbortController() : null;
     var relogio = controle ? setTimeout(function () { controle.abort(); }, TEMPO_LIMITE_MS) : null;
     return fetch(CONFIG.webAppUrl, {
@@ -451,7 +471,7 @@
         if (!json || typeof json !== 'object' || typeof json.ok !== 'boolean') {
           // Ex.: página de login ou de erro do Google no lugar do JSON (implantação sem acesso "Qualquer pessoa").
           console.error('Resposta não-JSON do serviço (HTTP ' + res.status + '):', texto.slice(0, 500));
-          return { ok: false, erro: 'O serviço respondeu num formato inesperado (código R2, HTTP ' + res.status + ').' };
+          return { ok: false, _transitorio: true, erro: 'O serviço respondeu num formato inesperado (código R2, HTTP ' + res.status + ').' };
         }
         return json;
       });
@@ -460,6 +480,7 @@
       console.error('Falha de comunicação com o serviço:', e);
       return {
         ok: false,
+        _transitorio: !tempo,
         erro: tempo
           ? 'A análise demorou mais que o esperado. Tente novamente em alguns minutos.'
           : 'Não foi possível falar com o serviço (código R1). Verifique sua conexão e tente novamente.'
@@ -1121,6 +1142,7 @@
 
   function sair() {
     esquecerSessao();
+    esquecerLista();
     // Recarrega para limpar o formulário (computador compartilhado).
     window.location.hash = '';
     window.location.reload();
@@ -1192,7 +1214,9 @@
       sessao.expira = r.expira || '';
       guardarSessao();
       $('aviso-login').hidden = true;
-      carregarOportunidades();
+      // A resposta do login já traz a lista; se não trouxer, pede em seguida.
+      if (Array.isArray(r.oportunidades)) aplicarLista(r);
+      else carregarOportunidades();
     });
   }
 
@@ -1217,24 +1241,73 @@
     return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   }
 
+  // A última lista fica guardada neste navegador e aparece na hora na próxima visita,
+  // enquanto a versão atual chega do servidor. Sair apaga a cópia.
+  var CHAVE_LISTA = 'fioconecta_lista';
+  var VALIDADE_LISTA_MS = 7 * 24 * 60 * 60 * 1000;
+
+  function lerListaGuardada() {
+    try {
+      var g = JSON.parse(window.localStorage.getItem(CHAVE_LISTA) || 'null');
+      if (!g || !Array.isArray(g.oportunidades) || typeof g.quando !== 'number') return null;
+      if (Date.now() - g.quando > VALIDADE_LISTA_MS) return null;
+      // Só vale para a mesma situação de acesso: a mesma pessoa conectada, ou login desligado.
+      if (g.login ? (g.email !== sessao.email || !sessao.passe) : !!sessao.passe) return null;
+      return g;
+    } catch (e) { return null; }
+  }
+
+  function guardarLista(r) {
+    try {
+      window.localStorage.setItem(CHAVE_LISTA, JSON.stringify({
+        quando: Date.now(), login: !!r.login, email: r.login ? (r.email || sessao.email) : '', oportunidades: r.oportunidades
+      }));
+    } catch (e) { /* sem armazenamento: a lista só não aparece antecipada */ }
+  }
+
+  function esquecerLista() {
+    try { window.localStorage.removeItem(CHAVE_LISTA); } catch (e) { /* nada a fazer */ }
+  }
+
+  /** Mostra uma lista válida (do servidor ou guardada) e segue para a tela do endereço. */
+  function aplicarLista(r, guardada) {
+    listaFalhou = false;
+    sessao.login = !!r.login;
+    if (!r.login) esquecerSessao();
+    else if (r.email) sessao.email = r.email;
+    oportunidades = r.oportunidades;
+    if (!guardada) {
+      guardarLista(r);
+      $('aviso-oportunidades').hidden = true;
+    }
+    $('carregando-pagina').hidden = true;
+    atualizarNavegacao();
+    desenharOportunidades();
+    if (!listaExibida) {
+      listaExibida = true;
+      aoMudarEndereco();
+    } else if (rotaAtual().tela === 'avaliar') {
+      // Lista atualizada depois da guardada: só refaz os textos, sem mudar o foco de quem já está usando.
+      prepararAvaliacao(rotaAtual().id);
+    }
+  }
+  var listaExibida = false;
+
   function carregarOportunidades() {
-    $('carregando-pagina').hidden = false;
+    var guardada = !oportunidades && lerListaGuardada();
+    if (guardada) aplicarLista(guardada, true);
+    else $('carregando-pagina').hidden = false;
     return enviar({ acao: 'oportunidades' }).then(function (r) {
       $('carregando-pagina').hidden = true;
       if (r && r.codigo === 'login') {
+        oportunidades = null;
+        listaExibida = false;
+        esquecerLista();
         exigirLogin(sessao.passe ? 'Sua sessão expirou. Entre novamente.' : '');
         return;
       }
       if (r && r.ok && Array.isArray(r.oportunidades)) {
-        listaFalhou = false;
-        sessao.login = !!r.login;
-        if (!r.login) esquecerSessao();
-        else if (r.email) sessao.email = r.email;
-        oportunidades = r.oportunidades;
-        $('aviso-oportunidades').hidden = true;
-        atualizarNavegacao();
-        desenharOportunidades();
-        aoMudarEndereco();
+        aplicarLista(r);
         return;
       }
       // Servidor sem esta versão: trata o pedido como formulário e recusa o campo "acao".

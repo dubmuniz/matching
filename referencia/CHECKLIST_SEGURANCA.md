@@ -80,3 +80,11 @@ Legenda: ✅ atendido · ⚠️ atendido com risco residual ou com ação penden
 | XSS / endereço da página | ✅ | Tudo por `textContent`; ID do endereço (`#avaliar/<ID>`) só vira texto e vai ao servidor, que valida; endereço malformado não quebra a página. |
 | Passe roubado | ⚠️ | O passe fica no `localStorage` do navegador e vale até 30 dias; *Sair* apaga só a cópia local. Mitigação: CSP sem scripts de terceiros (exceto Turnstile), nada de `innerHTML`, e bloqueio por `EMAILS_BLOQUEADOS`. |
 | Cota diária de e-mails | ⚠️ | Cada código gasta 1 e-mail. Sem Turnstile, alguém pode pedir 30 códigos por hora (para e-mails `@fiocruz.br` diferentes) e esgotar a cota da conta Gmail (~100/dia), travando logins e avisos ao Escritório naquele dia. Mitigação: Turnstile, conta institucional (cota maior). |
+
+### Ajustes de velocidade (05/10/2026)
+
+| Item | Situação | Onde / como |
+|---|---|---|
+| "Entrar" repetido | ✅ | A resposta fica guardada por 3 min sob o hash do e-mail, com o hash do código: só o código certo a recebe, o passe é conferido de novo, e palpites errados contam (5 apagam a resposta), para não haver palpites ilimitados depois de um login (achado da revisão de segurança, corrigido; teste). |
+| Lista guardada no navegador | ✅ | Só colunas públicas; usada apenas pela mesma pessoa conectada (ou com login desligado); apagada em *Sair* e quando o servidor recusa o passe. |
+| Repetição automática | ✅ | Só lista e "entrar"; matching, extração e proposta nunca são repetidos (evita cota gasta e registros duplicados). |

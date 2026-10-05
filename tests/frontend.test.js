@@ -161,3 +161,8 @@ test('mock da lista segue o formato do servidor', () => {
   const esperado = Object.keys(C.cardCatalogo({ prazo: { status: 'aberto', texto: '', data: '' } })).sort();
   mock.oportunidades.forEach(o => assert.deepEqual(Object.keys(o).sort(), esperado));
 });
+
+test('app.js: só a lista e "entrar" são repetidos automaticamente', () => {
+  const codigo = fs.readFileSync(path.join(DOCS, 'app.js'), 'utf8');
+  assert.match(codigo, /var REPETIVEIS = \{ oportunidades: true, entrar: true \};/);
+});
