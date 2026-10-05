@@ -134,7 +134,7 @@ function htmlResultado_(resultado, erroIA) {
   var partes = [];
   if (resultado.resumo_demanda) partes.push('<p><strong>Resumo (IA):</strong> ' + escaparHtml(resultado.resumo_demanda) + '</p>');
   if (resultado.lacunas_da_demanda.length) {
-    partes.push('<p><strong>Para melhorar o matching:</strong></p><ul>' +
+    partes.push('<p><strong>Para fortalecer sua candidatura:</strong></p><ul>' +
       resultado.lacunas_da_demanda.map(function (l) { return '<li>' + escaparHtml(l) + '</li>'; }).join('') + '</ul>');
   }
   var top = melhoresCards(resultado, 5);

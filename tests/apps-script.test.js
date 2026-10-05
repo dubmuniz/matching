@@ -206,7 +206,7 @@ test('doPost: envio válido grava em Demandas, envia e-mails e devolve só os ca
   assert.equal(dem.length, 2);
   assert.equal(dem[1][1], r.id_demanda);
   assert.equal(dem[1][2], 'Maria Pesquisadora');
-  assert.equal(dem[1][18], 'matching-v1');
+  assert.equal(dem[1][18], 'matching-v2');
   assert.equal(dem[1][19], 'Nova');
   assert.match(dem[1][17], /^1\. \[82\] Climate and Health — Wellcome Trust \(OPP-0001\)/);
 

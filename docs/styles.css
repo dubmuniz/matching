@@ -396,3 +396,4 @@ a.botao, a.botao:hover { color: #fff; }
 
 .selo-baixa { background: #eceff2; color: #3d4852; }
 input[readonly] { background: #eef1f4; color: var(--cor-texto-suave); }
+.caixa-nota { margin: 0 0 .4rem; font-size: .9rem; color: var(--cor-texto-suave); }

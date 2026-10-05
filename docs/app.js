@@ -1065,8 +1065,9 @@
     if (res.resumo_demanda) topo.appendChild(paragrafoRotulado('Sua demanda', res.resumo_demanda, 'resumo-demanda'));
     if (res.lacunas_da_demanda && res.lacunas_da_demanda.length) {
       var caixa = el('aside', 'caixa-lacunas');
-      caixa.setAttribute('aria-label', 'Para melhorar o matching');
-      caixa.appendChild(el('h3', null, 'Para melhorar o matching'));
+      caixa.setAttribute('aria-label', 'Para fortalecer sua candidatura');
+      caixa.appendChild(el('h3', null, 'Para fortalecer sua candidatura'));
+      caixa.appendChild(el('p', 'caixa-nota', 'Sugestões gerais, não obrigatórias. Você não precisa responder nada aqui; o Escritório de Captação pode ajudar.'));
       var ul = el('ul');
       res.lacunas_da_demanda.forEach(function (l) { ul.appendChild(el('li', null, l)); });
       caixa.appendChild(ul);

@@ -39,6 +39,7 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 
 ## Prompt
 - Prompt em `apps-script/Prompt.gs` com `PROMPT_VERSAO`. Mudou o texto, incrementa a versão.
+- Decisão do Bruno (05/10/2026, `matching-v2`), que prevalece sobre a seção 6.1 do briefing: `lacunas_da_demanda` aparece como **"Para fortalecer sua candidatura"** — até 4 ações práticas no imperativo, sem dizer que algo "falta" e sem pedir o que o formulário não pergunta; quando a dica depende de um campo do formulário, cita o campo pelo nome exato.
 
 ## Fase 2A: leitura de arquivo (`apps-script/Extracao.gs`)
 - `doPost` com `acao: "extrair"`: PDF vai ao Claude como documento base64; DOCX/TXT chegam como texto (o DOCX é lido no navegador, sem biblioteca externa). Corpo até 15 MB só nessa ação; arquivo até 10 MB.

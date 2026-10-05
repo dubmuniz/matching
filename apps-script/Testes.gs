@@ -315,7 +315,7 @@ function testarMatching() {
   var res = r.resultado;
   log('');
   log('Resumo da demanda: ' + res.resumo_demanda);
-  log('Para melhorar o matching: ' + (res.lacunas_da_demanda.join(' | ') || '—'));
+  log('Para fortalecer sua candidatura: ' + (res.lacunas_da_demanda.join(' | ') || '—'));
 
   var porId = {};
   candidatos.forEach(function (o) { porId[o.id] = o; });

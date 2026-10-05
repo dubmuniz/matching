@@ -328,7 +328,7 @@ test('avaliação de um edital: só ele vai para a IA e o card aparece mesmo com
   assert.equal(cab[cab.length - 1], 'Edital avaliado');
   const linha = abas.Demandas.matriz[1];
   assert.match(linha[cab.indexOf('Edital avaliado')], /^LINHA-3 — Call X \(Unitaid\)$/);
-  assert.equal(linha[cab.indexOf('Versão do prompt')], 'matching-v1+avaliacao-v1');
+  assert.equal(linha[cab.indexOf('Versão do prompt')], 'matching-v2+avaliacao-v1');
 
   assert.equal(emails.length, 1, 'só o Escritório recebe e-mail');
   assert.match(emails[0].subject, /Avaliação de edital/);

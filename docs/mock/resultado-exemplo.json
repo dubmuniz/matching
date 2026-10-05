@@ -4,10 +4,10 @@
   "resultado": {
     "resumo_demanda": "Sistema de vigilância integrada de arboviroses com dados climáticos e alertas precoces para municípios do Amazonas (EXEMPLO FICTÍCIO).",
     "lacunas_da_demanda": [
-      "Não há parceiros formais no exterior; vários editais exigem instituição coexecutora estrangeira.",
-      "Falta informar a contrapartida institucional disponível.",
-      "Falta indicar aprovação ética e acordo de uso de dados do SUS.",
-      "Faltam indicadores de resultado e plano de sustentabilidade após o financiamento."
+      "Comece a conversar com uma instituição estrangeira que possa ser coexecutora: vários editais sugeridos exigem isso.",
+      "Verifique com a sua unidade qual contrapartida (equipe, infraestrutura) a Fiocruz pode oferecer; alguns editais pontuam isso.",
+      "Se o projeto usar dados do SUS, inicie o pedido de aprovação ética e o acordo de uso de dados; muitos financiadores pedem esses documentos na submissão.",
+      "Para refinar o resultado, detalhe no campo Objetivos principais os indicadores que pretende acompanhar."
     ],
     "abertas": [
       {
