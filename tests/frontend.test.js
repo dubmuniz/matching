@@ -136,3 +136,28 @@ test('envio do matching não leva campos que só a proposta usa (compatível com
   assert.ok(leitura.length > 100);
   assert.ok(!/idiomaProposta/.test(leitura), 'idiomaProposta é lido só ao gerar a proposta');
 });
+
+// ---------------- Login e lista de oportunidades ----------------
+
+test('index.html: telas de entrada, lista e avaliação', () => {
+  const html = fs.readFileSync(path.join(DOCS, 'index.html'), 'utf8');
+  for (const id of ['tela-login', 'tela-oportunidades', 'tela-avaliar', 'form-codigo', 'form-entrar', 'botao-sair',
+    'lista-oportunidades', 'foco-edital', 'turnstile-login']) {
+    assert.match(html, new RegExp(`id="${id}"`), id);
+  }
+  assert.match(html, /id="codigo-login"[^>]*autocomplete="one-time-code"/);
+  assert.match(html, /apagados depois de 12 meses/);
+});
+
+test('app.js: o passe vai em todo envio, menos no pedido de código e na entrada', () => {
+  const codigo = fs.readFileSync(path.join(DOCS, 'app.js'), 'utf8');
+  const trecho = codigo.slice(codigo.indexOf('function enviar(dados)'), codigo.indexOf('function enviarAoServico'));
+  assert.match(trecho, /sessao\.passe && dados\.acao !== 'codigo' && dados\.acao !== 'entrar'/);
+});
+
+test('mock da lista segue o formato do servidor', () => {
+  const C = require('../apps-script/Catalogo.gs');
+  const mock = JSON.parse(fs.readFileSync(path.join(DOCS, 'mock', 'oportunidades-exemplo.json'), 'utf8'));
+  const esperado = Object.keys(C.cardCatalogo({ prazo: { status: 'aberto', texto: '', data: '' } })).sort();
+  mock.oportunidades.forEach(o => assert.deepEqual(Object.keys(o).sort(), esperado));
+});

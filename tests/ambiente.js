@@ -54,6 +54,7 @@ function criarAba(nome, matriz, opcoes = {}) {
       };
     },
     appendRow: (l) => { matriz.push([...l]); },
+    deleteRows: (inicio, n) => { matriz.splice(inicio - 1, n); },
     setFrozenRows: () => {}
   };
 }
@@ -72,7 +73,8 @@ function criarContexto(abas, respostasApi = [], opcoes = {}) {
   const requisicoes = [];
   const props = Object.assign({
     SPREADSHEET_ID: 'planilha-teste', MIN_DIAS_PRAZO: '21', ANTHROPIC_API_KEY: 'chave-de-teste',
-    ESCRITORIO_EMAIL: 'escritorio@fiocruz.br', DOMINIOS_COPIA: 'fiocruz.br'
+    ESCRITORIO_EMAIL: 'escritorio@fiocruz.br', DOMINIOS_COPIA: 'fiocruz.br',
+    LOGIN_ATIVO: 'nao' // os testes do login ligam explicitamente
   }, opcoes.props || {});
   const propsUsuario = {};
   const cache = {};
@@ -116,6 +118,7 @@ function criarContexto(abas, respostasApi = [], opcoes = {}) {
       })
     },
     MailApp: {
+      getRemainingDailyQuota: () => (opcoes.cotaEmail === undefined ? 100 : opcoes.cotaEmail),
       sendEmail: (m) => {
         if (opcoes.falharEmail) throw new Error('cota de e-mail esgotada');
         emails.push(m);
@@ -137,6 +140,7 @@ function criarContexto(abas, respostasApi = [], opcoes = {}) {
       DigestAlgorithm: { SHA_256: 'sha256' },
       Charset: { UTF_8: 'utf8' },
       computeDigest: (_alg, t) => [...require('node:crypto').createHash('sha256').update(t).digest()],
+      computeHmacSha256Signature: (v, k) => [...require('node:crypto').createHmac('sha256', k).update(v).digest()],
       base64EncodeWebSafe: (b) => Buffer.from(b).toString('base64url'),
       getUuid: () => require('node:crypto').randomUUID()
     },

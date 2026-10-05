@@ -11,6 +11,7 @@ var CONFIG_MATCHING = {
   ABA_OPORTUNIDADES: 'Oportunidades',
   ABA_ORGANIZACOES: 'Organizações',
   ABA_DEMANDAS: 'Demandas',
+  ABA_ACESSOS: 'Acessos',
   LINHA_CABECALHO: 1,
 
   // Claude
@@ -29,6 +30,9 @@ var CONFIG_MATCHING = {
   MIN_DIAS_PRAZO_PADRAO: 21,
   MAX_CANDIDATOS: 40,
 
+  // Login
+  RETENCAO_ACESSOS_MESES_PADRAO: 12,
+
   // Fuso
   FUSO: 'America/Sao_Paulo'
 };
@@ -44,7 +48,12 @@ var PROPRIEDADES_MATCHING = [
   'MIN_DIAS_PRAZO',
   'MODELO_CLAUDE',
   'ESFORCO_CLAUDE',
-  'MAX_TOKENS_CLAUDE'
+  'MAX_TOKENS_CLAUDE',
+  'LOGIN_ATIVO',
+  'DOMINIOS_LOGIN',
+  'EMAILS_BLOQUEADOS',
+  'RETENCAO_ACESSOS_MESES',
+  'SEGREDO_PASSE'
 ];
 
 var VALOR_EXEMPLO_ = 'COLE_AQUI';
@@ -68,7 +77,10 @@ function configurarPropriedades() {
     MIN_DIAS_PRAZO: '21',
     MODELO_CLAUDE: 'claude-sonnet-5',
     ESFORCO_CLAUDE: 'low',                // 'low' | 'medium' | 'high'
-    MAX_TOKENS_CLAUDE: '16000'
+    MAX_TOKENS_CLAUDE: '16000',
+    LOGIN_ATIVO: 'sim',                   // 'nao' desliga o login por código
+    DOMINIOS_LOGIN: 'fiocruz.br',         // domínios (ou e-mails completos) que podem entrar, separados por vírgula
+    RETENCAO_ACESSOS_MESES: '12'          // por quanto tempo a aba Acessos guarda os registros
   };
 
   var props = PropertiesService.getScriptProperties();
@@ -86,7 +98,7 @@ function configurarPropriedades() {
 /** Mostra no log quais propriedades estão preenchidas, sem expor valores secretos. */
 function verificarPropriedades() {
   var props = PropertiesService.getScriptProperties().getProperties();
-  var secretas = { ANTHROPIC_API_KEY: true, TURNSTILE_SECRET: true };
+  var secretas = { ANTHROPIC_API_KEY: true, TURNSTILE_SECRET: true, SEGREDO_PASSE: true };
   PROPRIEDADES_MATCHING.forEach(function (k) {
     var v = props[k];
     var estado;
@@ -117,13 +129,28 @@ function obterConfigMatching_() {
     esforco: /^(low|medium|high|xhigh|max)$/.test(String(p.ESFORCO_CLAUDE || '').trim())
       ? String(p.ESFORCO_CLAUDE).trim() : CONFIG_MATCHING.ESFORCO_PADRAO,
     maxTokens: parseInt(p.MAX_TOKENS_CLAUDE, 10) >= 1000
-      ? parseInt(p.MAX_TOKENS_CLAUDE, 10) : CONFIG_MATCHING.MAX_TOKENS_PADRAO
+      ? parseInt(p.MAX_TOKENS_CLAUDE, 10) : CONFIG_MATCHING.MAX_TOKENS_PADRAO,
+    // Login por código: ligado a menos que LOGIN_ATIVO seja explicitamente 'nao'.
+    loginAtivo: !/^(nao|não|false|0)$/i.test(String(p.LOGIN_ATIVO || '').trim()),
+    dominiosLogin: listaDePropriedade_(p.DOMINIOS_LOGIN, ['fiocruz.br']),
+    emailsBloqueados: listaDePropriedade_(p.EMAILS_BLOQUEADOS, []),
+    retencaoAcessosMeses: parseInt(p.RETENCAO_ACESSOS_MESES, 10) >= 1
+      ? parseInt(p.RETENCAO_ACESSOS_MESES, 10) : CONFIG_MATCHING.RETENCAO_ACESSOS_MESES_PADRAO
   };
 
   if (!cfg.spreadsheetId) {
     throw new Error('Propriedade SPREADSHEET_ID não configurada. Rode configurarPropriedades().');
   }
   return cfg;
+}
+
+/** 'a, b ,C' → ['a', 'b', 'c']; vazio → padrão. */
+function listaDePropriedade_(valor, padrao) {
+  var lista = String(valor || '')
+    .split(',')
+    .map(function (d) { return d.trim().toLowerCase(); })
+    .filter(function (d) { return d; });
+  return lista.length ? lista : padrao;
 }
 
 /** Data de hoje no fuso de São Paulo, como 'AAAA-MM-DD' (formato aceito por classificarPrazo). */

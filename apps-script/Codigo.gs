@@ -4,9 +4,17 @@
  * Implantação: "Executar como: eu" e "Quem pode acessar: qualquer pessoa".
  * O frontend envia POST com Content-Type text/plain e corpo JSON (evita o preflight de CORS).
  *
+ * Ações (campo "acao" do corpo):
+ *   (nenhuma)       matching; com "idOportunidade", avaliação de um único edital escolhido
+ *   codigo, entrar  login por código enviado ao e-mail (Acesso.gs)
+ *   oportunidades   lista completa de oportunidades (Catalogo.gs)
+ *   extrair         leitura de arquivo (Extracao.gs)
+ *   proposta        rascunho de proposta (Proposta.gs)
+ * Com o login ligado (LOGIN_ATIVO), todas as ações, menos codigo e entrar, exigem "passe".
+ *
  * Resposta sempre em JSON:
  *   sucesso: { ok: true, id_demanda, resultado }          (resultado: ver montarResultado)
- *   erro:    { ok: false, erro: 'mensagem em português', campos?: { campo: mensagem } }
+ *   erro:    { ok: false, erro: 'mensagem em português', campos?: { campo: mensagem }, codigo?: 'login' }
  * Detalhes técnicos dos erros vão só para console.error (Execuções do Apps Script).
  */
 
@@ -16,6 +24,10 @@ var MENSAGENS_ERRO = {
   campos: 'Revise os campos destacados.',
   robo: 'Não foi possível confirmar o envio. Recarregue a página e tente de novo.',
   limiteEmail: 'Você atingiu o limite de 3 envios em 24 horas com este e-mail. Tente novamente amanhã.',
+  limiteAvaliacao: 'Você atingiu o limite de 10 avaliações de edital em 24 horas. Tente novamente amanhã.',
+  limiteLista: 'Muitos acessos à lista de oportunidades. Tente novamente mais tarde.',
+  login: 'Sua sessão expirou ou não é válida. Entre novamente com o seu e-mail.',
+  edital: 'Este edital não está mais disponível na base. Atualize a lista de oportunidades.',
   limiteGlobal: 'O sistema recebeu muitos envios na última hora. Tente novamente mais tarde.',
   ocupado: 'O sistema está ocupado. Tente novamente em alguns instantes.',
   ia: 'Não conseguimos gerar as sugestões agora. Sua demanda foi registrada e o Escritório fará uma análise manual.',
@@ -34,6 +46,8 @@ function doPost(e) {
     return respostaJson_({ ok: false, erro: MENSAGENS_ERRO.inesperado + ' (ref. ' + ref + ')' });
   }
 }
+
+var ACOES_ = ['codigo', 'entrar', 'oportunidades', 'extrair', 'proposta'];
 
 var CHAVE_ULTIMOS_ERROS_ = 'ULTIMOS_ERROS';
 var MAX_ERROS_GUARDADOS_ = 10;
@@ -82,8 +96,12 @@ function falha_(chave, extra) {
   return r;
 }
 
-/** Pipeline completo. Devolve o objeto de resposta (sem serializar). */
-function processarEnvio_(e) {
+/**
+ * Recebe o envio, confere login e encaminha para a ação. Devolve o objeto de resposta (sem serializar).
+ * @param {{ semLogin?: boolean }} opcoesTeste  só para as funções de teste do editor (Testes.gs);
+ *   o doPost nunca passa este argumento
+ */
+function processarEnvio_(e, opcoesTeste) {
   // 1. Tamanho e formato
   var bruto = (e && e.postData && typeof e.postData.contents === 'string') ? e.postData.contents : '';
   if (!bruto) return falha_('formato');
@@ -93,64 +111,111 @@ function processarEnvio_(e) {
 
   var dados;
   try { dados = JSON.parse(bruto); } catch (err) { return falha_('formato'); }
+  if (!dados || typeof dados !== 'object' || Array.isArray(dados)) return falha_('formato');
+  var acao = dados.acao;
+  if (acao !== undefined && ACOES_.indexOf(acao) < 0) return falha_('formato');
+  if (acao !== 'extrair' && tamanhoEmBytes_(bruto) > LIMITE_CORPO_BYTES) return falha_('tamanho');
 
-  if (dados && typeof dados === 'object' && dados.acao === 'extrair') return processarExtracao_(dados);
-  if (tamanhoEmBytes_(bruto) > LIMITE_CORPO_BYTES) return falha_('tamanho');
-  if (dados && typeof dados === 'object' && dados.acao === 'proposta') return processarProposta_(dados);
+  // 2. Login: pedir código e entrar não exigem passe
+  if (acao === 'codigo') return processarPedidoCodigo_(dados);
+  if (acao === 'entrar') return processarEntrada_(dados);
 
-  // 2. Honeypot (antes de qualquer outra coisa, sem dar pistas)
+  var cfg = obterConfigMatching_();
+  var sessao = (opcoesTeste && opcoesTeste.semLogin) ? { ok: true, email: '' } : sessaoDoEnvio_(cfg, dados);
+  if (!sessao.ok) return falha_('login', { codigo: 'login' });
+  if (acao === 'oportunidades') return processarListaOportunidades_(dados, cfg, sessao);
+  if (sessao.email) aplicarEmailDaSessao_(dados, sessao.email);
+
+  var r;
+  if (acao === 'extrair') {
+    r = processarExtracao_(dados);
+    if (r.ok) registrarAcesso_(cfg, dados.email, 'Leitura de arquivo', '');
+    return r;
+  }
+  if (acao === 'proposta') {
+    r = processarProposta_(dados);
+    if (r.ok) registrarAcesso_(cfg, dados.demanda.email, 'Proposta (parte ' + r.parte + ')', dados.idOportunidade);
+    return r;
+  }
+  return processarMatching_(dados, cfg);
+}
+
+/** Matching (ou avaliação de um edital escolhido, com "idOportunidade"). */
+function processarMatching_(dados, cfg) {
+  // O edital escolhido não faz parte do formulário: sai antes da validação.
+  var idFoco = dados.idOportunidade;
+  delete dados.idOportunidade;
+  if (idFoco !== undefined && (typeof idFoco !== 'string' || !idFoco || idFoco.length > 40)) return falha_('formato');
+  var individual = idFoco !== undefined;
+
+  // Honeypot (antes de qualquer outra coisa, sem dar pistas)
   if (honeypotPreenchido(dados)) {
     console.warn('Envio descartado: honeypot preenchido.');
     return falha_('robo');
   }
 
-  // 3. Validação de todos os campos
+  // Validação de todos os campos
   var v = validarDemanda(dados);
   if (!v.ok) return falha_('campos', { campos: v.erros });
   var demanda = v.demanda;
 
-  // 4. Anti-abuso: Turnstile e limite de taxa
-  var cfg = obterConfigMatching_();
+  // Anti-abuso: Turnstile e limite de taxa (a avaliação de um edital tem cota própria)
   if (!verificarTurnstile_(cfg, dados.turnstileToken)) return falha_('robo');
-  var limite = verificarLimiteDeTaxa_(demanda.email);
+  var limite = verificarLimiteDeTaxa_(demanda.email, individual ? 'avaliacao' : 'matching');
   if (!limite.permitido) {
     console.warn('Envio bloqueado pelo limite de taxa: ' + limite.motivo);
-    return falha_(limite.motivo === 'email' ? 'limiteEmail' : limite.motivo === 'global' ? 'limiteGlobal' : 'ocupado');
+    return falha_(limite.motivo === 'email' ? (individual ? 'limiteAvaliacao' : 'limiteEmail')
+      : limite.motivo === 'global' ? 'limiteGlobal' : 'ocupado');
   }
 
-  // 5-8. Base, pré-seleção, IA e cards
+  // Base, pré-seleção, IA e cards
   var hoje = hojeSaoPaulo_();
   var base = carregarBaseMatching_(cfg, hoje);
-  var candidatos = preselecionarCandidatos(demanda, base.candidatos, CONFIG_MATCHING.MAX_CANDIDATOS);
+  var candidatos, organizacoes, edital = null;
+  if (individual) {
+    edital = base.candidatos.filter(function (o) { return o.id === idFoco; })[0];
+    if (!edital) return falha_('edital');
+    candidatos = [edital];
+    organizacoes = [];
+  } else {
+    candidatos = preselecionarCandidatos(demanda, base.candidatos, CONFIG_MATCHING.MAX_CANDIDATOS);
+    organizacoes = base.organizacoesParaIA;
+  }
   var resultado = null, erroIA = '';
   try {
-    var ia = executarMatchingIA_(cfg, demanda, candidatos, base.organizacoesParaIA);
-    resultado = montarResultado(ia.resultado, candidatos, base.organizacoesParaIA);
+    var ia = executarMatchingIA_(cfg, demanda, candidatos, organizacoes, { individual: individual });
+    resultado = montarResultado(ia.resultado, candidatos, organizacoes, { individual: individual });
   } catch (err) {
     erroIA = String(err && err.message ? err.message : err).slice(0, 500);
     registrarErro_('Matching: falha na IA', err);
   }
 
-  // 9. Registro e e-mail: falhas aqui não impedem a resposta
+  // Registro e e-mail: falhas aqui não impedem a resposta
   var agora = new Date();
   var idDemanda = gerarIdDemanda(
     Utilities.formatDate(agora, CONFIG_MATCHING.FUSO, 'yyyyMMdd'),
     Utilities.getUuid().replace(/-/g, '')
   );
+  var opcoesRegistro = {
+    versaoPrompt: individual ? PROMPT_VERSAO + '+' + PROMPT_VERSAO_INDIVIDUAL : PROMPT_VERSAO,
+    editalAvaliado: individual ? edital.id + ' — ' + edital.edital + ' (' + edital.financiador + ')' : ''
+  };
   try {
     var ss = abrirPlanilhaMatching_(cfg);
     registrarDemanda_(ss, montarLinhaDemanda(
-      Utilities.formatDate(agora, CONFIG_MATCHING.FUSO, 'dd/MM/yyyy HH:mm:ss'), idDemanda, demanda, resultado, erroIA));
+      Utilities.formatDate(agora, CONFIG_MATCHING.FUSO, 'dd/MM/yyyy HH:mm:ss'), idDemanda, demanda, resultado, erroIA, opcoesRegistro));
   } catch (err) {
     registrarErro_('Falha ao gravar a demanda ' + idDemanda, err);
   }
   try {
-    enviarEmails_(cfg, demanda, idDemanda, resultado, erroIA);
+    enviarEmails_(cfg, demanda, idDemanda, resultado, erroIA, opcoesRegistro);
   } catch (err) {
     registrarErro_('Falha ao enviar e-mail da demanda ' + idDemanda, err);
   }
+  registrarAcesso_(cfg, demanda.email, individual ? 'Avaliação de edital' : 'Matching',
+    idDemanda + (individual ? ' · ' + edital.id : ''));
 
-  // 10. Resposta
+  // Resposta
   if (!resultado) return falha_('ia', { id_demanda: idDemanda });
   return { ok: true, id_demanda: idDemanda, resultado: resultado };
 }

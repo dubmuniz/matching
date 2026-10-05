@@ -1,0 +1,71 @@
+{
+  "ok": true,
+  "login": false,
+  "email": "",
+  "oportunidades": [
+    {
+      "id": "OPP-0007",
+      "financiador": "Fundação Exemplo para a Saúde",
+      "edital": "Chamada de inovação em vigilância (EXEMPLO)",
+      "tema": "Vigilância em saúde, dados climáticos e alertas precoces",
+      "resumo": "Apoio a projetos que integrem dados de saúde e de clima para antecipar surtos em países de renda baixa e média. Exige parceria com instituição pública e plano de uso dos dados pelos serviços de saúde.",
+      "prazo_status": "prazo_curto",
+      "prazo_texto": "Prazo curto: 20/10/2026",
+      "prazo_data": "20/10/2026",
+      "valores": "Até US$ 500 mil",
+      "duracao": "24 meses",
+      "integridade": "Permitido",
+      "integridade_aviso": false,
+      "via_governanca": "Captação direta",
+      "link_edital": "https://example.org/edital-vigilancia"
+    },
+    {
+      "id": "OPP-0012",
+      "financiador": "Programa Internacional de Pesquisa (EXEMPLO)",
+      "edital": "Bolsas de pesquisa colaborativa",
+      "tema": "Doenças infecciosas e negligenciadas",
+      "resumo": "",
+      "prazo_status": "aberto",
+      "prazo_texto": "Prazo: 15/12/2026",
+      "prazo_data": "15/12/2026",
+      "valores": "€ 150.000 por projeto",
+      "duracao": "36 meses",
+      "integridade": "Não avaliado",
+      "integridade_aviso": true,
+      "via_governanca": "A definir",
+      "link_edital": "https://example.org/bolsas"
+    },
+    {
+      "id": "OPP-0003",
+      "financiador": "Fundo Exemplo de Clima e Saúde",
+      "edital": "Fluxo contínuo de pequenos apoios",
+      "tema": "Clima e saúde",
+      "resumo": "Pequenos apoios para projetos-piloto em comunidades afetadas por eventos climáticos extremos.",
+      "prazo_status": "continuo",
+      "prazo_texto": "Fluxo contínuo",
+      "prazo_data": "",
+      "valores": "US$ 20 mil a 50 mil",
+      "duracao": "",
+      "integridade": "Permitido",
+      "integridade_aviso": false,
+      "via_governanca": "Orientação institucional",
+      "link_edital": ""
+    },
+    {
+      "id": "OPP-0001",
+      "financiador": "Fundação Exemplo Anual",
+      "edital": "Grand Challenge (ciclo 2026)",
+      "tema": "Saúde materno-infantil",
+      "resumo": "Edital anual; o ciclo de 2026 já fechou.",
+      "prazo_status": "encerrado",
+      "prazo_texto": "Último prazo conhecido: 01/03/2026 — verifique o próximo ciclo",
+      "prazo_data": "01/03/2026",
+      "valores": "US$ 1 milhão",
+      "duracao": "24 meses",
+      "integridade": "Permitido",
+      "integridade_aviso": false,
+      "via_governanca": "Captação direta",
+      "link_edital": "https://example.org/grand-challenge"
+    }
+  ]
+}

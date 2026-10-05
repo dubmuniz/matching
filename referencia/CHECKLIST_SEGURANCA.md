@@ -62,3 +62,21 @@ Legenda: ✅ atendido · ⚠️ atendido com risco residual ou com ação penden
 | Valores do orçamento | ⚠️ | São estimativas da IA. Sempre marcados como "rascunho estimado por IA" na página e na planilha; total limitado no prompt ao teto do edital, sem verificação automática (o campo Valores é texto livre). |
 | Abuso / custo | ✅ | Cotas de 5 por e-mail/24 h e 20/h para cada parte; honeypot e Turnstile. Pior caso com Turnstile desligado: ~US$ 6/h. |
 | Nada gravado | ✅ | `processarProposta_()` não grava na planilha nem envia e-mail. |
+
+## Fase 3: login, lista de oportunidades e avaliação de um edital (05/10/2026)
+
+| Item | Situação | Onde / como |
+|---|---|---|
+| Só pessoas autorizadas usam a plataforma | ✅ | Com `LOGIN_ATIVO` (padrão ligado), toda ação exige passe válido; `DOMINIOS_LOGIN` com correspondência exata (subdomínios e `fiocruz.br.outro.com` recusados). Testes cobrem cada ação sem passe. |
+| Passe impossível de forjar ou estender | ✅ | HMAC-SHA256 sobre e-mail e validade, segredo de 64 caracteres aleatórios em `SEGREDO_PASSE`; comparação em tempo constante; validade acima de 31 dias recusada. Testes com e-mail trocado, validade estendida e passe vencido. |
+| Revogação | ✅ | `EMAILS_BLOQUEADOS` e `DOMINIOS_LOGIN` são conferidos a cada envio; apagar `SEGREDO_PASSE` desconecta todos. |
+| Força bruta do código | ✅ | 6 dígitos, 10 minutos, 5 tentativas por código e 5 códigos por e-mail/24 h (no máximo 25 palpites por dia em 1 milhão). Trava (`LockService`) na conferência. |
+| Código não fica guardado | ✅ | Só o hash (SHA-256 com o e-mail) no `CacheService`; apagado ao usar. Teste confere que o código não aparece no cache. |
+| E-mail comprovado | ✅ | Com login, o e-mail do passe substitui o digitado (matching, leitura de arquivo e proposta); cotas por e-mail passam a valer de verdade. |
+| Registro de acessos (LGPD) | ✅ | Aba *Acessos* com e-mail, data e evento; sem conteúdo do projeto e sem o código. Aviso na tela de entrada; apagado após 12 meses (`RETENCAO_ACESSOS_MESES`). Texto passa por `protegerCelula()`. |
+| Gravação na planilha por quem não tem acesso | ✅ | Turnstile e limite de taxa (30 pedidos de código por hora no total) vêm antes de registrar a recusa. Teste com 35 e-mails de fora: 30 linhas. |
+| Lista de oportunidades | ✅ | Só candidatos (ativos e não vedados) e só colunas públicas (teste procura textos das colunas internas). Com o login desligado, a lista fica pública. |
+| Avaliação de um edital | ✅ | ID conferido no servidor entre os candidatos; só esse edital vai para a IA; e-mail e nome continuam fora (teste). Cota própria. |
+| XSS / endereço da página | ✅ | Tudo por `textContent`; ID do endereço (`#avaliar/<ID>`) só vira texto e vai ao servidor, que valida; endereço malformado não quebra a página. |
+| Passe roubado | ⚠️ | O passe fica no `localStorage` do navegador e vale até 30 dias; *Sair* apaga só a cópia local. Mitigação: CSP sem scripts de terceiros (exceto Turnstile), nada de `innerHTML`, e bloqueio por `EMAILS_BLOQUEADOS`. |
+| Cota diária de e-mails | ⚠️ | Cada código gasta 1 e-mail. Sem Turnstile, alguém pode pedir 30 códigos por hora (para e-mails `@fiocruz.br` diferentes) e esgotar a cota da conta Gmail (~100/dia), travando logins e avisos ao Escritório naquele dia. Mitigação: Turnstile, conta institucional (cota maior). |

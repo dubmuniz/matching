@@ -90,7 +90,10 @@ var COTAS_TAXA_ = {
   matching: { porEmail: LIMITE_ENVIOS_POR_EMAIL, global: LIMITE_ENVIOS_GLOBAIS, prefixo: PREFIXO_LIMITE_EMAIL_, chaveGlobal: CHAVE_LIMITE_GLOBAL_ },
   extracao: { porEmail: 5, global: 30, prefixo: 'LIMITE_EXTRACAO_EMAIL_', chaveGlobal: 'LIMITE_EXTRACAO_GLOBAL' },
   proposta: { porEmail: 5, global: 20, prefixo: 'LIMITE_PROPOSTA_EMAIL_', chaveGlobal: 'LIMITE_PROPOSTA_GLOBAL' },
-  proposta2: { porEmail: 5, global: 20, prefixo: 'LIMITE_PROPOSTA2_EMAIL_', chaveGlobal: 'LIMITE_PROPOSTA2_GLOBAL' }
+  proposta2: { porEmail: 5, global: 20, prefixo: 'LIMITE_PROPOSTA2_EMAIL_', chaveGlobal: 'LIMITE_PROPOSTA2_GLOBAL' },
+  avaliacao: { porEmail: 10, global: 30, prefixo: 'LIMITE_AVALIACAO_EMAIL_', chaveGlobal: 'LIMITE_AVALIACAO_GLOBAL' },
+  codigo: { porEmail: 5, global: 30, prefixo: 'LIMITE_CODIGO_EMAIL_', chaveGlobal: 'LIMITE_CODIGO_GLOBAL' },
+  lista: { porEmail: 200, global: 1000, prefixo: 'LIMITE_LISTA_EMAIL_', chaveGlobal: 'LIMITE_LISTA_GLOBAL' }
 };
 
 /* =====================================================================
@@ -257,7 +260,8 @@ function chaveLimiteEmail_(email, prefixo) {
  * - por e-mail: N usos a cada 24 h (guardado em Propriedades do usuário, porque o
  *   CacheService só guarda por até 6 h). A chave é um hash do e-mail, não o e-mail;
  * - global: N usos por hora (CacheService).
- * @param {string} tipo  'matching' (padrão: 3 por e-mail, 30 por hora) ou 'extracao' (5 e 30)
+ * Sem e-mail (lista de oportunidades com o login desligado), vale só o limite global.
+ * @param {string} tipo  chave de COTAS_TAXA_ (padrão 'matching': 3 por e-mail, 30 por hora)
  * @return {{ permitido: boolean, motivo?: 'email'|'global'|'ocupado' }}
  */
 function verificarLimiteDeTaxa_(email, tipo) {
@@ -272,13 +276,18 @@ function verificarLimiteDeTaxa_(email, tipo) {
     var global = aplicarJanelaDeLimite(lerJson_(cache.get(cota.chaveGlobal)), agora, JANELA_GLOBAL_MS, cota.global);
     if (!global.permitido) return { permitido: false, motivo: 'global' };
 
-    var chave = chaveLimiteEmail_(email, cota.prefixo);
-    var porEmail = aplicarJanelaDeLimite(lerJson_(props.getProperty(chave)), agora, JANELA_EMAIL_MS, cota.porEmail);
-    if (!porEmail.permitido) return { permitido: false, motivo: 'email' };
+    var chave = '', porEmail = null;
+    if (email) {
+      chave = chaveLimiteEmail_(email, cota.prefixo);
+      porEmail = aplicarJanelaDeLimite(lerJson_(props.getProperty(chave)), agora, JANELA_EMAIL_MS, cota.porEmail);
+      if (!porEmail.permitido) return { permitido: false, motivo: 'email' };
+    }
 
     cache.put(cota.chaveGlobal, JSON.stringify(global.registros), Math.ceil(JANELA_GLOBAL_MS / 1000));
-    props.setProperty(chave, JSON.stringify(porEmail.registros));
-    limparLimitesVencidos_(props, agora);
+    if (porEmail) {
+      props.setProperty(chave, JSON.stringify(porEmail.registros));
+      limparLimitesVencidos_(props, agora);
+    }
     return { permitido: true };
   } finally {
     trava.releaseLock();

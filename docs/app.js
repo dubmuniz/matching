@@ -6,7 +6,12 @@
  * - links só são exibidos com protocolo http(s), em nova aba, com rel="noopener noreferrer";
  * - a validação aqui é só para ajudar o usuário: o servidor valida tudo de novo.
  *
- * Modo de teste sem backend: ?mock=1 (resultado de exemplo), ?mock=vazio, ?mock=erro.
+ * Telas (pelo endereço): #oportunidades (lista), #avaliar (matching com toda a base) e
+ * #avaliar/<ID> (avaliação de um edital escolhido). Com o login ligado no servidor, a tela de
+ * entrada aparece antes de tudo; o passe fica guardado neste navegador por 30 dias.
+ *
+ * Modo de teste sem backend: ?mock=1 (resultado de exemplo), ?mock=vazio, ?mock=erro,
+ * ?mock=login (pede login; o código de teste é 123456).
  *
  * As listas e a validação abaixo espelham apps-script/Seguranca.gs
  * (tests/frontend.test.js confere que continuam iguais).
@@ -380,12 +385,14 @@
 
   /* ---------- Turnstile ---------- */
 
-  var idWidgetTurnstile = null;
+  // Um widget no formulário e outro na tela de entrada.
+  var widgetsTurnstile = {};
 
   function iniciarTurnstile() {
     if (!CONFIG.turnstileSiteKey || MODO_MOCK) return;
     window.fioconectaTurnstileCarregado = function () {
-      idWidgetTurnstile = window.turnstile.render('#turnstile', { sitekey: CONFIG.turnstileSiteKey, language: 'pt-br' });
+      widgetsTurnstile.form = window.turnstile.render('#turnstile', { sitekey: CONFIG.turnstileSiteKey, language: 'pt-br' });
+      widgetsTurnstile.login = window.turnstile.render('#turnstile-login', { sitekey: CONFIG.turnstileSiteKey, language: 'pt-br' });
     };
     var s = document.createElement('script');
     s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=fioconectaTurnstileCarregado&render=explicit';
@@ -394,19 +401,37 @@
     document.head.appendChild(s);
   }
 
-  function tokenTurnstile() {
-    if (idWidgetTurnstile === null || !window.turnstile) return '';
-    return window.turnstile.getResponse(idWidgetTurnstile) || '';
+  function tokenTurnstile(qual) {
+    var id = widgetsTurnstile[qual || 'form'];
+    if (id === undefined || !window.turnstile) return '';
+    return window.turnstile.getResponse(id) || '';
   }
 
-  function reiniciarTurnstile() {
-    if (idWidgetTurnstile !== null && window.turnstile) window.turnstile.reset(idWidgetTurnstile);
+  function reiniciarTurnstile(qual) {
+    var id = widgetsTurnstile[qual || 'form'];
+    if (id !== undefined && window.turnstile) window.turnstile.reset(id);
   }
 
   /* ---------- envio ---------- */
 
+  /**
+   * Envia ao serviço. Com sessão, acrescenta o passe; se o serviço disser que a sessão
+   * expirou (codigo "login"), volta para a tela de entrada.
+   */
   function enviar(dados) {
-    if (MODO_MOCK) return respostaMock(MODO_MOCK);
+    if (sessao.passe && dados.acao !== 'codigo' && dados.acao !== 'entrar') {
+      dados = Object.assign({}, dados, { passe: sessao.passe });
+    }
+    return enviarAoServico(dados).then(function (r) {
+      if (r && r.codigo === 'login' && dados.acao !== 'oportunidades') {
+        exigirLogin('Sua sessão expirou. Entre novamente: os dados do formulário continuam na página.');
+      }
+      return r;
+    });
+  }
+
+  function enviarAoServico(dados) {
+    if (MODO_MOCK) return respostaMock(MODO_MOCK, dados);
     if (!CONFIG.webAppUrl) {
       return Promise.resolve({ ok: false, erro: 'A página ainda não foi configurada (falta a URL do serviço). Avise o Escritório de Captação.' });
     }
@@ -445,8 +470,31 @@
     });
   }
 
-  function respostaMock(modo) {
+  function respostaMock(modo, dados) {
     var espera = function (ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); };
+    if (dados.acao === 'oportunidades') {
+      if (modo === 'login' && dados.passe !== 'passe-de-teste') return espera(300).then(function () { return { ok: false, codigo: 'login', erro: 'Entre.' }; });
+      return fetch('mock/oportunidades-exemplo.json', { credentials: 'omit' }).then(function (r) { return r.json(); }).then(function (m) {
+        return { ok: true, login: modo === 'login', email: modo === 'login' ? 'pesquisadora@fiocruz.br' : '', oportunidades: m.oportunidades };
+      });
+    }
+    if (dados.acao === 'codigo') return espera(600).then(function () { return { ok: true, email: dados.email, validade_minutos: 10 }; });
+    if (dados.acao === 'entrar') {
+      return espera(600).then(function () {
+        return dados.codigo === '123456'
+          ? { ok: true, passe: 'passe-de-teste', email: 'pesquisadora@fiocruz.br', expira: '01/01/2099' }
+          : { ok: false, erro: 'Código incorreto. Confira o e-mail e tente de novo.' };
+      });
+    }
+    if (dados.idOportunidade) {
+      return espera(1200).then(function () {
+        return fetch('mock/resultado-exemplo.json', { credentials: 'omit' }).then(function (r) { return r.json(); });
+      }).then(function (m) {
+        var card = Object.assign({}, m.resultado.abertas[0], { id: dados.idOportunidade, nota: 35, selo: 'Baixa aderência' });
+        var res = Object.assign({}, m.resultado, { abertas: [card], monitorar: [], financiadores: [], individual: true });
+        return { ok: true, id_demanda: 'DEM-20261005-TEST', resultado: res };
+      });
+    }
     if (modo === 'erro') {
       return espera(1200).then(function () {
         return { ok: false, erro: 'Não conseguimos gerar as sugestões agora. Sua demanda foi registrada e o Escritório fará uma análise manual.', id_demanda: 'DEM-20260930-TEST' };
@@ -483,7 +531,11 @@
     $('resultados').hidden = true;
     $('carregando').hidden = false;
 
-    enviar(dados).then(function (r) {
+    // O edital escolhido vai fora do formulário (o rascunho de proposta reusa só a demanda).
+    var corpo = focoAtual ? Object.assign({}, dados, { idOportunidade: focoAtual }) : dados;
+    var focoDoEnvio = focoAtual;
+    enviar(corpo).then(function (r) {
+      focoDoResultado = focoDoEnvio;
       $('carregando').hidden = true;
       botao.disabled = false;
       form.removeAttribute('aria-busy');
@@ -715,7 +767,7 @@
 
   /** Com o Turnstile ligado, cada envio precisa de um token novo: espera o widget gerar (até 20 s). */
   function aguardarToken() {
-    if (idWidgetTurnstile === null || !window.turnstile) return Promise.resolve('');
+    if (widgetsTurnstile.form === undefined || !window.turnstile) return Promise.resolve('');
     return new Promise(function (ok) {
       var inicio = Date.now();
       (function tentar() {
@@ -836,7 +888,8 @@
   function classeSelo(nota) {
     if (nota >= 75) return 'selo selo-alta';
     if (nota >= 60) return 'selo selo-boa';
-    return 'selo selo-parcial';
+    if (nota >= 40) return 'selo selo-parcial';
+    return 'selo selo-baixa';
   }
 
   function paragrafoRotulado(rotulo, texto, classe) {
@@ -983,6 +1036,7 @@
 
   function mostrarResultado(r) {
     var res = r.resultado;
+    $('titulo-resultados').textContent = res.individual ? 'Resultado da avaliação' : 'Resultado do matching';
     $('protocolo').textContent = r.id_demanda ? 'Protocolo: ' + r.id_demanda : '';
 
     var topo = $('resumo-demanda');
@@ -1002,6 +1056,10 @@
     lista.textContent = '';
     if (res.vazio) {
       lista.appendChild(el('p', 'mensagem-vazio', res.mensagem_vazio));
+    } else if (res.individual) {
+      adicionar(lista, secao('Avaliação do edital escolhido',
+        'Nota de aderência do seu projeto a este edital, com a justificativa. Notas abaixo de 40 indicam baixa aderência.',
+        [].concat(res.abertas || [], res.monitorar || []), cardOportunidade));
     } else {
       adicionar(lista, secao('Oportunidades abertas', 'Editais com prazo aberto, contínuo, recorrente ou a confirmar.',
         res.abertas, cardOportunidade));
@@ -1014,6 +1072,320 @@
 
     $('resultados').hidden = false;
     $('titulo-resultados').focus();
+  }
+
+  /* ---------- sessão (login por código) ---------- */
+
+  var CHAVE_SESSAO = 'fioconecta_sessao';
+  // login: null = ainda não sabemos se o servidor exige; passe: string assinada pelo servidor.
+  var sessao = { login: null, passe: '', email: '', expira: '' };
+
+  function lerSessaoGuardada() {
+    try {
+      var s = JSON.parse(window.localStorage.getItem(CHAVE_SESSAO) || 'null');
+      if (s && typeof s.passe === 'string' && typeof s.email === 'string') {
+        sessao.passe = s.passe;
+        sessao.email = s.email;
+        sessao.expira = String(s.expira || '');
+      }
+    } catch (e) { /* armazenamento indisponível: pede login de novo */ }
+  }
+
+  function guardarSessao() {
+    try {
+      window.localStorage.setItem(CHAVE_SESSAO, JSON.stringify({ passe: sessao.passe, email: sessao.email, expira: sessao.expira }));
+    } catch (e) { /* sem armazenamento, a sessão vale só enquanto a página estiver aberta */ }
+  }
+
+  function esquecerSessao() {
+    sessao.passe = '';
+    sessao.email = '';
+    sessao.expira = '';
+    try { window.localStorage.removeItem(CHAVE_SESSAO); } catch (e) { /* nada a fazer */ }
+  }
+
+  function atualizarNavegacao() {
+    var logado = sessao.login && sessao.email;
+    $('usuario').textContent = logado ? sessao.email : '';
+    $('botao-sair').hidden = !logado;
+    // Com login, o e-mail do formulário é o confirmado no acesso.
+    var email = $('email');
+    if (logado) {
+      email.value = sessao.email;
+      email.readOnly = true;
+      $('email-ajuda').textContent = 'E-mail confirmado no acesso. Endereços @fiocruz.br recebem uma cópia do resultado por e-mail.';
+    } else {
+      email.readOnly = false;
+    }
+  }
+
+  function sair() {
+    esquecerSessao();
+    // Recarrega para limpar o formulário (computador compartilhado).
+    window.location.hash = '';
+    window.location.reload();
+  }
+
+  /* ---------- tela de entrada ---------- */
+
+  var emailDoCodigo = '';
+
+  function exigirLogin(mensagem) {
+    esquecerSessao();
+    sessao.login = true;
+    atualizarNavegacao();
+    mostrarTela('login');
+    var aviso = $('aviso-login');
+    aviso.hidden = !mensagem;
+    aviso.textContent = mensagem || '';
+    $('form-codigo').hidden = false;
+    $('form-entrar').hidden = true;
+  }
+
+  function erroNoCampo(id, mensagem) {
+    var p = $(id + '-erro');
+    p.textContent = mensagem || '';
+    p.hidden = !mensagem;
+    if (mensagem) { $(id).setAttribute('aria-invalid', 'true'); $(id).focus(); }
+    else $(id).removeAttribute('aria-invalid');
+  }
+
+  function aoPedirCodigo(ev) {
+    ev.preventDefault();
+    $('aviso-login').hidden = true;
+    var email = limpar($('email-login').value).toLowerCase();
+    if (!(email.length <= 254 && RE_EMAIL.test(email))) { erroNoCampo('email-login', 'Informe um e-mail válido.'); return; }
+    erroNoCampo('email-login', '');
+    var botao = $('botao-codigo');
+    botao.disabled = true;
+    botao.textContent = 'Enviando…';
+    enviar({ acao: 'codigo', email: email, site: $('site').value, turnstileToken: tokenTurnstile('login') }).then(function (r) {
+      botao.disabled = false;
+      botao.textContent = 'Enviar código';
+      reiniciarTurnstile('login');
+      if (!r.ok) { erroNoCampo('email-login', r.erro || 'Não foi possível enviar o código.'); return; }
+      emailDoCodigo = r.email || email;
+      $('form-codigo').hidden = true;
+      $('form-entrar').hidden = false;
+      $('codigo-enviado').textContent = 'Enviamos um código para ' + emailDoCodigo + '.';
+      $('codigo-login').value = '';
+      $('codigo-login').focus();
+    });
+  }
+
+  function aoEntrar(ev) {
+    ev.preventDefault();
+    var codigo = $('codigo-login').value.replace(/\s+/g, '');
+    if (!/^\d{6}$/.test(codigo)) { erroNoCampo('codigo-login', 'O código tem 6 números.'); return; }
+    erroNoCampo('codigo-login', '');
+    var botao = $('botao-entrar');
+    botao.disabled = true;
+    enviar({ acao: 'entrar', email: emailDoCodigo, codigo: codigo, site: $('site').value }).then(function (r) {
+      botao.disabled = false;
+      if (!r.ok || typeof r.passe !== 'string') {
+        erroNoCampo('codigo-login', (r && r.erro) || 'Não foi possível entrar.');
+        if (r && /novo código/.test(r.erro || '')) { $('form-entrar').hidden = true; $('form-codigo').hidden = false; }
+        return;
+      }
+      sessao.passe = r.passe;
+      sessao.email = r.email;
+      sessao.expira = r.expira || '';
+      guardarSessao();
+      $('aviso-login').hidden = true;
+      carregarOportunidades();
+    });
+  }
+
+  function voltarAoEmail() {
+    $('form-entrar').hidden = true;
+    $('form-codigo').hidden = false;
+    erroNoCampo('codigo-login', '');
+    $('email-login').focus();
+  }
+
+  /* ---------- lista de oportunidades ---------- */
+
+  var oportunidades = null;   // lista vinda do servidor (null = ainda não carregada)
+  var listaFalhou = false;    // a lista não carregou: as telas ficam disponíveis mesmo assim
+
+  var ROTULOS_PRAZO = {
+    aberto: 'Aberto', prazo_curto: 'Prazo curto', continuo: 'Fluxo contínuo', ciclos: 'Ciclos recorrentes',
+    a_confirmar: 'Prazo a confirmar', encerrado: 'Encerrado: acompanhar o próximo ciclo'
+  };
+
+  function semAcentos(s) {
+    return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  }
+
+  function carregarOportunidades() {
+    $('carregando-pagina').hidden = false;
+    return enviar({ acao: 'oportunidades' }).then(function (r) {
+      $('carregando-pagina').hidden = true;
+      if (r && r.codigo === 'login') {
+        exigirLogin(sessao.passe ? 'Sua sessão expirou. Entre novamente.' : '');
+        return;
+      }
+      if (r && r.ok && Array.isArray(r.oportunidades)) {
+        listaFalhou = false;
+        sessao.login = !!r.login;
+        if (!r.login) esquecerSessao();
+        else if (r.email) sessao.email = r.email;
+        oportunidades = r.oportunidades;
+        $('aviso-oportunidades').hidden = true;
+        atualizarNavegacao();
+        desenharOportunidades();
+        aoMudarEndereco();
+        return;
+      }
+      // Servidor sem esta versão: trata o pedido como formulário e recusa o campo "acao".
+      var msg = (r && r.campos)
+        ? 'O serviço ainda não reconhece a lista de oportunidades (código V2). O Apps Script precisa ser atualizado e implantado em uma nova versão.'
+        : ((r && r.erro) || 'Não foi possível carregar a lista de oportunidades.');
+      if (r && r.campos) console.error('Pedido da lista recusado como formulário:', r);
+      listaFalhou = true;
+      atualizarNavegacao();
+      mostrarTela(rotaAtual().tela === 'avaliar' ? 'avaliar' : 'oportunidades');
+      var aviso = $('aviso-oportunidades');
+      aviso.textContent = '';
+      aviso.appendChild(el('p', null, msg));
+      var botao = el('button', 'botao-secundario', 'Tentar novamente');
+      botao.type = 'button';
+      botao.addEventListener('click', carregarOportunidades);
+      aviso.appendChild(botao);
+      aviso.hidden = false;
+    });
+  }
+
+  function filtrarOportunidades() {
+    var termo = semAcentos(limpar($('busca').value));
+    var prazo = $('filtro-prazo').value;
+    return (oportunidades || []).filter(function (o) {
+      if (prazo === 'abertas' && o.prazo_status === 'encerrado') return false;
+      if (prazo === 'encerradas' && o.prazo_status !== 'encerrado') return false;
+      if (!termo) return true;
+      return semAcentos([o.financiador, o.edital, o.tema, o.resumo].join(' ')).indexOf(termo) >= 0;
+    });
+  }
+
+  function desenharOportunidades() {
+    var lista = $('lista-oportunidades');
+    lista.textContent = '';
+    if (!oportunidades) return;
+    var filtradas = filtrarOportunidades();
+    var total = oportunidades.length;
+    $('contagem-oportunidades').textContent = filtradas.length === total
+      ? total + ' oportunidade' + (total === 1 ? '' : 's') + '.'
+      : filtradas.length + ' de ' + total + ' oportunidades.';
+    if (!filtradas.length) {
+      lista.appendChild(el('p', 'mensagem-vazio', 'Nenhuma oportunidade com estes filtros.'));
+      return;
+    }
+    filtradas.forEach(function (o) { lista.appendChild(cardDaLista(o)); });
+  }
+
+  function cardDaLista(o) {
+    var art = el('article', 'card card-lista');
+    var topo = el('div', 'card-topo');
+    topo.appendChild(el('span', 'chip-prazo chip-' + (ROTULOS_PRAZO[o.prazo_status] ? o.prazo_status : 'a_confirmar'),
+      ROTULOS_PRAZO[o.prazo_status] || ROTULOS_PRAZO.a_confirmar));
+    adicionar(topo, seloIntegridade(o));
+    art.appendChild(topo);
+    art.appendChild(el('p', 'card-financiador', o.financiador));
+    art.appendChild(el('h3', 'card-titulo', o.edital));
+
+    var fatos = el('dl', 'fatos');
+    [['Prazo', o.prazo_texto, o.prazo_status === 'prazo_curto' ? 'fato-urgente' : null],
+     ['Valores', o.valores], ['Duração', o.duracao], ['Tema', o.tema], ['Via de governança', o.via_governanca]
+    ].forEach(function (f) {
+      if (!f[1]) return;
+      var grupo = el('div', f[2] || null);
+      grupo.appendChild(el('dt', null, f[0]));
+      grupo.appendChild(el('dd', null, f[1]));
+      fatos.appendChild(grupo);
+    });
+    art.appendChild(fatos);
+
+    if (o.resumo) {
+      var det = el('details', 'resumo-chamada');
+      det.appendChild(el('summary', null, 'Resumo da chamada'));
+      det.appendChild(el('p', null, o.resumo));
+      art.appendChild(det);
+    }
+
+    var acoes = el('div', 'card-acoes');
+    var avaliar = el('a', 'botao botao-pequeno', 'Avaliar meu projeto para este edital');
+    avaliar.href = '#avaliar/' + encodeURIComponent(o.id);
+    avaliar.setAttribute('aria-label', 'Avaliar meu projeto para o edital ' + o.edital);
+    acoes.appendChild(avaliar);
+    adicionar(acoes, linkExterno(o.link_edital, 'Ver edital', 'Ver edital ' + o.edital));
+    art.appendChild(acoes);
+    return art;
+  }
+
+  /* ---------- telas e endereço ---------- */
+
+  var TELAS = { login: 'tela-login', oportunidades: 'tela-oportunidades', avaliar: 'tela-avaliar' };
+  var focoAtual = '';        // ID do edital escolhido (vazio = toda a base)
+  var focoDoResultado = null; // foco do resultado exibido na tela
+
+  /** #oportunidades | #avaliar | #avaliar/<ID> */
+  function rotaAtual() {
+    var h;
+    try { h = decodeURIComponent(String(window.location.hash || '').replace(/^#/, '')); } catch (e) { h = ''; }
+    var m = h.match(/^avaliar(?:\/(.{1,40}))?$/);
+    if (m) return { tela: 'avaliar', id: m[1] || '' };
+    return { tela: 'oportunidades', id: '' };
+  }
+
+  function mostrarTela(nome) {
+    Object.keys(TELAS).forEach(function (k) { $(TELAS[k]).hidden = k !== nome; });
+    $('carregando-pagina').hidden = true;
+    $('navegacao').hidden = nome === 'login';
+    ['oportunidades', 'avaliar'].forEach(function (k) {
+      var link = $('nav-' + k);
+      if (k === nome) link.setAttribute('aria-current', 'page');
+      else link.removeAttribute('aria-current');
+    });
+  }
+
+  function aoMudarEndereco() {
+    if (sessao.login && !sessao.passe) { mostrarTela('login'); return; }
+    if (sessao.login === null && !oportunidades && !listaFalhou) return; // ainda carregando
+    var rota = rotaAtual();
+    if (rota.tela === 'avaliar') prepararAvaliacao(rota.id);
+    mostrarTela(rota.tela);
+    var titulo = $(rota.tela === 'avaliar' ? 'titulo-intro' : 'titulo-oportunidades');
+    if (titulo && document.activeElement !== titulo && iniciado) titulo.focus();
+    iniciado = true;
+  }
+  var iniciado = false;
+
+  function prepararAvaliacao(id) {
+    var edital = id && oportunidades ? oportunidades.filter(function (o) { return o.id === id; })[0] : null;
+    if (id && oportunidades && !edital) {
+      mostrarAvisoGeral('Este edital não está mais na lista de oportunidades. Você pode comparar o projeto com todas as oportunidades.');
+      id = '';
+    }
+    focoAtual = id;
+    var foco = $('foco-edital');
+    foco.hidden = !id;
+    if (edital) {
+      $('foco-titulo').textContent = edital.edital + ' — ' + edital.financiador;
+      $('foco-detalhes').textContent = [edital.prazo_texto, edital.valores].filter(Boolean).join(' · ');
+    } else if (id) {
+      $('foco-titulo').textContent = 'Edital ' + id;
+      $('foco-detalhes').textContent = '';
+    }
+    $('intro-texto').textContent = id
+      ? 'Descreva o seu projeto (ou use os dados já preenchidos). A IA avalia a aderência a este edital, com nota, justificativa, lacunas e próximo passo. Depois, você pode gerar um rascunho de proposta.'
+      : 'Descreva o seu projeto. Vamos compará-lo com a base de editais e financiadores mantida pelo Escritório de Captação e mostrar as oportunidades mais aderentes, com a justificativa de cada sugestão. O Escritório recebe a sua demanda e entrará em contato.';
+    $('botao-enviar').textContent = id ? 'Avaliar aderência a este edital' : 'Encontrar oportunidades';
+    $('texto-carregando').textContent = id ? 'Avaliando a aderência do seu projeto a este edital…' : 'Analisando a aderência do seu projeto…';
+    // Resultado de outra avaliação não fica na tela.
+    if (focoDoResultado !== null && focoDoResultado !== focoAtual) {
+      $('resultados').hidden = true;
+      $('aviso-geral').hidden = true;
+    }
   }
 
   /* ---------- início ---------- */
@@ -1031,10 +1403,20 @@
     form.addEventListener('submit', aoEnviar);
     iniciarUpload();
     iniciarTurnstile();
+    $('form-codigo').addEventListener('submit', aoPedirCodigo);
+    $('form-entrar').addEventListener('submit', aoEntrar);
+    $('botao-outro-email').addEventListener('click', voltarAoEmail);
+    $('botao-sair').addEventListener('click', sair);
+    $('busca').addEventListener('input', desenharOportunidades);
+    $('filtro-prazo').addEventListener('change', desenharOportunidades);
+    window.addEventListener('hashchange', aoMudarEndereco);
     if (MODO_MOCK) {
-      var aviso = el('p', 'aviso-mock', 'Modo de teste: nada é enviado; o resultado é um exemplo fixo.');
-      form.parentNode.insertBefore(aviso, form);
+      var aviso = el('p', 'aviso-mock', 'Modo de teste: nada é enviado; os resultados são exemplos fixos.' +
+        (MODO_MOCK === 'login' ? ' Código de acesso: 123456.' : ''));
+      $('conteudo').insertBefore(aviso, $('conteudo').firstChild);
     }
+    lerSessaoGuardada();
+    carregarOportunidades();
   }
 
   iniciar();

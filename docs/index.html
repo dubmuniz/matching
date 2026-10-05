@@ -7,30 +7,114 @@
         content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Fioconecta · Matching de Oportunidades</title>
-  <meta name="description" content="Apresente seu projeto e receba sugestões de editais e financiadores aderentes, a partir da base curada pelo Escritório de Captação da Fiocruz.">
-  <link rel="stylesheet" href="styles.css?v=12">
+  <meta name="description" content="Consulte os editais da base curada pelo Escritório de Captação da Fiocruz e avalie a aderência do seu projeto.">
+  <link rel="stylesheet" href="styles.css?v=13">
 </head>
 <body>
   <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
   <header class="topo">
     <div class="topo-interno">
-      <img class="logo" src="img/logo-fiocruz.webp?v=12" alt="Fiocruz" width="164" height="46">
+      <img class="logo" src="img/logo-fiocruz.webp?v=13" alt="Fiocruz" width="164" height="46">
       <div class="topo-textos">
         <p class="sobretitulo">Escritório de Captação de Recursos · Presidência da Fiocruz</p>
         <h1>Fioconecta · Matching de Oportunidades</h1>
       </div>
     </div>
+    <nav id="navegacao" class="navegacao" aria-label="Seções da plataforma" hidden>
+      <div class="navegacao-interna">
+        <a href="#oportunidades" id="nav-oportunidades">Oportunidades</a>
+        <a href="#avaliar" id="nav-avaliar">Avaliar meu projeto</a>
+        <span class="navegacao-usuario">
+          <span id="usuario"></span>
+          <button type="button" id="botao-sair" class="botao-link" hidden>Sair</button>
+        </span>
+      </div>
+    </nav>
   </header>
 
   <main id="conteudo" class="conteudo">
-    <section class="intro" aria-labelledby="titulo-intro">
-      <h2 id="titulo-intro" class="visualmente-oculto">Como funciona</h2>
-      <p>Descreva o seu projeto. Vamos compará-lo com a base de editais e financiadores mantida pelo Escritório de Captação e mostrar as oportunidades mais aderentes, com a justificativa de cada sugestão. O Escritório recebe a sua demanda e entrará em contato.</p>
-      <p class="nota">Campos marcados com <span class="obrigatorio" aria-hidden="true">*</span><span class="visualmente-oculto">asterisco</span> são obrigatórios. A análise leva de 20 a 60 segundos.</p>
+    <noscript><p class="aviso-erro">Esta página precisa de JavaScript para funcionar.</p></noscript>
+
+    <div id="carregando-pagina" class="carregando">
+      <div class="girando" aria-hidden="true"></div>
+      <p role="status">Carregando…</p>
+    </div>
+
+    <!-- ===== Entrar ===== -->
+    <section id="tela-login" class="tela tela-login" aria-labelledby="titulo-login" hidden>
+      <h2 id="titulo-login" tabindex="-1">Entrar</h2>
+      <p>Acesso para pesquisadores da Fiocruz. Informe o seu e-mail institucional para receber um código de acesso de 6 números.</p>
+      <div id="aviso-login" class="aviso-erro" role="alert" tabindex="-1" hidden></div>
+
+      <form id="form-codigo" class="bloco bloco-login" novalidate>
+        <div class="campo">
+          <label for="email-login">E-mail institucional</label>
+          <input id="email-login" type="email" autocomplete="email" maxlength="254" required aria-describedby="email-login-erro">
+          <p id="email-login-erro" class="erro" hidden></p>
+        </div>
+        <div id="turnstile-login" class="turnstile"></div>
+        <div class="acoes acoes-login">
+          <button type="submit" id="botao-codigo" class="botao">Enviar código</button>
+        </div>
+      </form>
+
+      <form id="form-entrar" class="bloco bloco-login" novalidate hidden>
+        <p id="codigo-enviado" class="codigo-enviado" role="status"></p>
+        <div class="campo">
+          <label for="codigo-login">Código de acesso</label>
+          <input id="codigo-login" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7"
+                 pattern="[0-9 ]*" required aria-describedby="codigo-login-ajuda codigo-login-erro">
+          <p id="codigo-login-ajuda" class="ajuda">Confira também a caixa de spam. O código vale por 10 minutos.</p>
+          <p id="codigo-login-erro" class="erro" hidden></p>
+        </div>
+        <div class="acoes acoes-login">
+          <button type="submit" id="botao-entrar" class="botao">Entrar</button>
+          <button type="button" id="botao-outro-email" class="botao-link">Usar outro e-mail ou pedir novo código</button>
+        </div>
+      </form>
+
+      <p class="nota">O acesso vale por 30 dias neste navegador. Registramos o seu e-mail e a data de cada acesso e uso da plataforma, para controle de acesso; esses registros são apagados depois de 12 meses.</p>
     </section>
 
-    <noscript><p class="aviso-erro">Esta página precisa de JavaScript para funcionar.</p></noscript>
+    <!-- ===== Lista de oportunidades ===== -->
+    <section id="tela-oportunidades" class="tela" aria-labelledby="titulo-oportunidades" hidden>
+      <h2 id="titulo-oportunidades" tabindex="-1">Oportunidades da base</h2>
+      <p>Editais acompanhados pelo Escritório de Captação. Escolha um edital e clique em <strong>Avaliar meu projeto para este edital</strong>, ou <a href="#avaliar">compare o seu projeto com todas as oportunidades de uma vez</a>.</p>
+
+      <div class="filtros" role="search">
+        <div class="campo">
+          <label for="busca">Buscar por financiador, edital ou tema</label>
+          <input id="busca" type="search" maxlength="100" autocomplete="off">
+        </div>
+        <div class="campo">
+          <label for="filtro-prazo">Prazo</label>
+          <select id="filtro-prazo">
+            <option value="abertas">Abertas, contínuas ou a confirmar</option>
+            <option value="encerradas">Encerradas (próximo ciclo)</option>
+            <option value="todas">Todas</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="aviso-oportunidades" class="aviso-erro" role="alert" tabindex="-1" hidden></div>
+      <p id="contagem-oportunidades" class="contagem" role="status" aria-live="polite"></p>
+      <div id="lista-oportunidades" class="grade-cards"></div>
+    </section>
+
+    <!-- ===== Avaliar meu projeto ===== -->
+    <section id="tela-avaliar" class="tela" aria-labelledby="titulo-intro" hidden>
+    <div class="intro">
+      <h2 id="titulo-intro" tabindex="-1">Avaliar meu projeto</h2>
+      <div id="foco-edital" class="foco-edital" hidden>
+        <p class="foco-rotulo">Você está avaliando o seu projeto para este edital:</p>
+        <p id="foco-titulo" class="foco-titulo"></p>
+        <p id="foco-detalhes" class="foco-detalhes"></p>
+        <p><a href="#avaliar">Comparar com todas as oportunidades em vez deste edital</a> · <a href="#oportunidades">Voltar à lista</a></p>
+      </div>
+      <p id="intro-texto">Descreva o seu projeto. Vamos compará-lo com a base de editais e financiadores mantida pelo Escritório de Captação e mostrar as oportunidades mais aderentes, com a justificativa de cada sugestão. O Escritório recebe a sua demanda e entrará em contato.</p>
+      <p class="nota">Campos marcados com <span class="obrigatorio" aria-hidden="true">*</span><span class="visualmente-oculto">asterisco</span> são obrigatórios. Os dados ficam na página: você pode avaliar vários editais sem preencher de novo. A análise leva de 20 a 60 segundos.</p>
+    </div>
 
     <form id="form-demanda" novalidate aria-describedby="titulo-intro">
       <div id="resumo-erros" class="resumo-erros" role="alert" tabindex="-1" hidden></div>
@@ -205,7 +289,7 @@
 
     <div id="carregando" class="carregando" hidden>
       <div class="girando" aria-hidden="true"></div>
-      <p role="status">Analisando a aderência do seu projeto…</p>
+      <p role="status" id="texto-carregando">Analisando a aderência do seu projeto…</p>
     </div>
 
     <div id="aviso-geral" class="aviso-erro" role="alert" tabindex="-1" hidden></div>
@@ -216,15 +300,16 @@
       <div id="resumo-demanda"></div>
       <div id="lista-resultados"></div>
     </section>
+    </section>
   </main>
 
   <footer class="rodape">
     <p>Sugestões geradas com apoio de IA a partir da base curada pelo Escritório de Captação. Não constituem decisão institucional. O Escritório entrará em contato.</p>
   </footer>
 
-  <script src="config.js?v=12"></script>
-  <script src="xlsx.js?v=12"></script>
-  <script src="proposta.js?v=12"></script>
-  <script src="app.js?v=12"></script>
+  <script src="config.js?v=13"></script>
+  <script src="xlsx.js?v=13"></script>
+  <script src="proposta.js?v=13"></script>
+  <script src="app.js?v=13"></script>
 </body>
 </html>

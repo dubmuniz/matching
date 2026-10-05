@@ -17,6 +17,9 @@ var MAX_CARDS_MONITORAR = 5;
 var MAX_CARDS_FINANCIADORES = 5;
 var INTEGRIDADE_COM_AVISO_ = ['Análise reforçada', 'Não avaliado'];
 
+var MENSAGEM_SEM_AVALIACAO =
+  'Não foi possível avaliar este edital agora. Tente novamente em alguns minutos.';
+
 var MENSAGEM_SEM_RESULTADOS =
   'Não encontramos correspondências fortes na base atual. O Escritório recebeu sua demanda e fará uma análise manual.';
 
@@ -70,9 +73,12 @@ function cardFinanciador_(item, g) {
  * @param {Object} respostaIA     saída de validarRespostaMatching().dados
  * @param {Object[]} oportunidades as enviadas à IA (com prazo, integridade, via, linkEdital)
  * @param {Object[]} organizacoes  as enviadas à IA
+ * @param {{ individual?: boolean }} opcoes  individual: avaliação de um único edital escolhido;
+ *   o card aparece qualquer que seja a nota (o pesquisador pediu a avaliação dele)
  * @return {{ resumo_demanda, lacunas_da_demanda, abertas: [], monitorar: [], financiadores: [], vazio: boolean, mensagem_vazio: string }}
  */
-function montarResultado(respostaIA, oportunidades, organizacoes) {
+function montarResultado(respostaIA, oportunidades, organizacoes, opcoes) {
+  var individual = !!(opcoes && opcoes.individual);
   var porId = {};
   (oportunidades || []).forEach(function (o) { porId[o.id] = o; });
   var porNome = {};
@@ -83,7 +89,9 @@ function montarResultado(respostaIA, oportunidades, organizacoes) {
     var o = porId[item.id];
     if (!o || o.integridade === 'Vedado') return;   // defesa extra: vedados nunca viram card
     var status = o.prazo && o.prazo.status;
-    if (STATUS_SECAO_ABERTAS_.indexOf(status) >= 0 && item.nota >= NOTA_MIN_ABERTAS) {
+    if (individual) {
+      (status === 'encerrado' ? monitorar : abertas).push(cardOportunidade_(item, o));
+    } else if (STATUS_SECAO_ABERTAS_.indexOf(status) >= 0 && item.nota >= NOTA_MIN_ABERTAS) {
       abertas.push(cardOportunidade_(item, o));
     } else if (status === 'encerrado' && item.nota >= NOTA_MIN_MONITORAR) {
       monitorar.push(cardOportunidade_(item, o));
@@ -93,7 +101,7 @@ function montarResultado(respostaIA, oportunidades, organizacoes) {
   var financiadores = [];
   (respostaIA.financiadores || []).forEach(function (item) {
     var g = porNome[item.organizacao];
-    if (!g || g.integridade === 'Vedado' || item.nota < NOTA_MIN_FINANCIADORES) return;
+    if (individual || !g || g.integridade === 'Vedado' || item.nota < NOTA_MIN_FINANCIADORES) return;
     financiadores.push(cardFinanciador_(item, g));
   });
 
@@ -113,7 +121,8 @@ function montarResultado(respostaIA, oportunidades, organizacoes) {
     financiadores: financiadores.slice(0, MAX_CARDS_FINANCIADORES)
   };
   r.vazio = !r.abertas.length && !r.monitorar.length && !r.financiadores.length;
-  r.mensagem_vazio = r.vazio ? MENSAGEM_SEM_RESULTADOS : '';
+  r.mensagem_vazio = r.vazio ? (individual ? MENSAGEM_SEM_AVALIACAO : MENSAGEM_SEM_RESULTADOS) : '';
+  if (individual) r.individual = true;
   return r;
 }
 

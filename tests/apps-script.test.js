@@ -250,7 +250,8 @@ test('doPost: entradas inválidas são rejeitadas antes de chamar a IA', () => {
     [envioValido({ extra: 1 }), /Revise os campos/],
     [envioValido({ email: 'invalido' }), /Revise os campos/],
     [envioValido({ consentimento: 'sim' }), /Revise os campos/],
-    [[1, 2], /Revise os campos/]
+    [[1, 2], /Não foi possível ler/],
+    [envioValido({ acao: 'desconhecida' }), /Não foi possível ler/]
   ];
   for (const [corpo, esperado] of casos) {
     const { ctx, requisicoes, emails } = criarContexto(montarPlanilha());

@@ -24,7 +24,7 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 - Datas, valores e links vêm sempre da planilha, nunca da IA.
 
 ## Segurança e privacidade (seção 10)
-- Segredos e configurações (`ANTHROPIC_API_KEY`, `SPREADSHEET_ID`, `ESCRITORIO_EMAIL`, `DOMINIOS_COPIA`, `TURNSTILE_SECRET`, `MIN_DIAS_PRAZO` etc.) ficam **só** em Propriedades do script. Nada disso vai para o repositório; `configurarPropriedades()` usa `COLE_AQUI`.
+- Segredos e configurações (`ANTHROPIC_API_KEY`, `SPREADSHEET_ID`, `ESCRITORIO_EMAIL`, `DOMINIOS_COPIA`, `TURNSTILE_SECRET`, `MIN_DIAS_PRAZO`, `SEGREDO_PASSE`, `DOMINIOS_LOGIN` etc.) ficam **só** em Propriedades do script. Nada disso vai para o repositório; `configurarPropriedades()` usa `COLE_AQUI`.
 - Colunas INTERNAS nunca saem do servidor: `Ponto focal no time do Escritório`, `Pesquisador parceiro`, `Email de contato`, `Valor enviado`, `Valor captado`, `Link do resumo executivo`, `Contato/ Cargo`, `Endereço de contato`.
 - Nome e e-mail do pesquisador nunca vão para a IA.
 - Texto do usuário vai delimitado em `<demanda>`. A saída da IA é validada contra os IDs e organizações enviados, notas limitadas a 0–100 e textos cortados em 400 caracteres.
@@ -51,6 +51,14 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 - O edital é relido da planilha pelo ID (só ativos e não vedados); duração por `duracaoEmMeses()` (padrão de 24 meses, com aviso, quando o edital não informa). A demanda é validada de novo; nome e e-mail não vão para a IA (entram só no arquivo gerado no navegador).
 - Orçamento: moeda do edital, por ano, rubricas do edital ou modelo padrão; valores são ESTIMATIVAS da IA, sempre marcados como rascunho; totais por fórmula. Texto entra como inline string (nunca fórmula).
 - Cotas: 5 por e-mail/24 h e 20/h, para cada parte. `PROMPT_PROPOSTA_VERSAO` segue a regra de versão.
+
+## Fase 3: login, lista de oportunidades e avaliação de um edital (`apps-script/Acesso.gs`, `apps-script/Catalogo.gs`)
+- Login por código: `acao: "codigo"` envia 6 dígitos ao e-mail (10 min, 5 tentativas; guardado só como hash no `CacheService`); `acao: "entrar"` devolve o passe `email|validade|HMAC-SHA256` (30 dias; segredo `SEGREDO_PASSE`, criado sozinho). `LOGIN_ATIVO` (padrão ligado), `DOMINIOS_LOGIN` (domínio exato ou e-mail completo; padrão `fiocruz.br`), `EMAILS_BLOQUEADOS`.
+- Com login, toda ação (menos `codigo` e `entrar`) exige o passe, e o e-mail que vale é o do passe (`aplicarEmailDaSessao_`). O passe sai dos dados antes da validação.
+- Aba `Acessos` (Data/hora, E-mail, Evento, Detalhe): logins, recusas e cada uso. O código nunca é gravado. Retenção `RETENCAO_ACESSOS_MESES` (padrão 12), limpeza automática após login (no máximo a cada 6 h) e por `limparAcessosAntigos()`. Turnstile e limite de taxa vêm antes de qualquer gravação.
+- Lista (`acao: "oportunidades"`): só candidatos (ativos e não vedados), só colunas públicas, 10 min em cache. Nada passa pela IA.
+- Avaliação de um edital: matching com `idOportunidade`; só esse edital vai para a IA (sem financiadores), com `PROMPT_AVALIACAO_INDIVIDUAL` (`PROMPT_VERSAO_INDIVIDUAL`, mesma regra de versão); o card aparece qualquer que seja a nota. Cota própria (10 por e-mail/24 h, 30/h). Grava em Demandas (coluna `Edital avaliado`, criada à direita) e avisa o Escritório, sem cópia ao pesquisador.
+- Página: telas por endereço (`#oportunidades`, `#avaliar`, `#avaliar/<ID>`), passe no `localStorage`. Implantar o Apps Script antes de publicar a página.
 
 ## Testes e fluxo
 - Funções puras (`Prazo.gs`, `Preselecao.gs`) rodam no Apps Script e no Node (`if (typeof module !== 'undefined') module.exports = {...}`). Testes: `node --test` (descobre `tests/*.test.js`). `tests/apps-script.test.js` carrega todos os `.gs` com serviços simulados e confere colisão de nomes com o script existente.

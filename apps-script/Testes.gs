@@ -17,6 +17,10 @@
  *   envia o e-mail ao Escritório e, se o domínio permitir, a cópia). Usa ESCRITORIO_EMAIL como
  *   e-mail do "pesquisador". Gasta créditos da API e conta no limite de 3 envios por e-mail/24 h
  *   (use limparLimitesDeTaxa() para zerar durante os testes).
+ *
+ * testarLogin(): mostra a configuração do login, confere a assinatura do passe, cria a aba Acessos
+ *   e envia um código de acesso para ESCRITORIO_EMAIL (para conferir se o e-mail chega). Não gasta
+ *   créditos da API. testarValidacao() e testarEnvioCompleto() pulam o login.
  */
 
 /**
@@ -85,6 +89,35 @@ function envioValidoDeExemplo_(email) {
   return d;
 }
 
+function testarLogin() {
+  var cfg = obterConfigMatching_();
+  var linhas = ['===== TESTE DO LOGIN (sem custo de API) =====',
+    'LOGIN_ATIVO: ' + (cfg.loginAtivo ? 'sim' : 'não (o formulário aceita qualquer e-mail)'),
+    'Domínios e e-mails com acesso: ' + cfg.dominiosLogin.join(', '),
+    'E-mails bloqueados: ' + (cfg.emailsBloqueados.join(', ') || 'nenhum'),
+    'Retenção da aba ' + CONFIG_MATCHING.ABA_ACESSOS + ': ' + cfg.retencaoAcessosMeses + ' meses',
+    'Cota de e-mails restante hoje: ' + MailApp.getRemainingDailyQuota()];
+
+  var emailTeste = 'teste@' + cfg.dominiosLogin.filter(function (d) { return d.indexOf('@') < 0; })[0];
+  var passe = emitirPasse_(emailTeste, Date.now());
+  var ok = verificarPasse_(cfg, passe.passe, Date.now()).ok;
+  var adulterado = verificarPasse_(cfg, passe.passe.replace(/^teste@/, 'outro@'), Date.now()).ok;
+  linhas.push('Passe de teste (' + emailTeste + '): ' + (ok ? '✓ aceito' : '✗ RECUSADO (erro!)') +
+    '; passe adulterado: ' + (adulterado ? '✗ ACEITO (erro!)' : '✓ recusado'));
+
+  registrarAcesso_(cfg, '(teste do editor)', 'Teste do login', '');
+  linhas.push('Aba ' + CONFIG_MATCHING.ABA_ACESSOS + ': linha de teste gravada (pode apagar).');
+
+  if (cfg.escritorioEmail && emailPermitidoParaLogin(cfg.escritorioEmail, cfg.dominiosLogin, cfg.emailsBloqueados)) {
+    var r = processarPedidoCodigo_({ acao: 'codigo', email: cfg.escritorioEmail, site: '', turnstileToken: '' });
+    linhas.push('Código enviado para ' + cfg.escritorioEmail + ': ' + (r.ok ? '✓ confira a caixa de entrada (e o spam)' : '✗ ' + r.erro));
+  } else {
+    linhas.push('ESCRITORIO_EMAIL vazio ou fora de DOMINIOS_LOGIN: nenhum código enviado.');
+  }
+  linhas.push('===== FIM =====');
+  imprimirEmBlocos_(linhas);
+}
+
 function testarValidacao() {
   var base = envioValidoDeExemplo_('teste-validacao@exemplo.org');
   var casos = [
@@ -101,7 +134,7 @@ function testarValidacao() {
   ];
   var linhas = ['===== TESTE DE VALIDAÇÃO (sem custo) ====='];
   casos.forEach(function (c) {
-    var r = processarEnvio_(eventoPost_(c[1]));
+    var r = processarEnvio_(eventoPost_(c[1]), { semLogin: true });
     linhas.push((r.ok ? '✗ ACEITO (erro!) ' : '✓ rejeitado ') + '— ' + c[0] + ': ' + r.erro +
       (r.campos ? ' ' + JSON.stringify(r.campos) : ''));
   });
@@ -113,7 +146,7 @@ function testarEnvioCompleto() {
   var cfg = obterConfigMatching_();
   if (!cfg.escritorioEmail) throw new Error('Configure ESCRITORIO_EMAIL antes deste teste.');
   var inicio = Date.now();
-  var r = processarEnvio_(eventoPost_(envioValidoDeExemplo_(cfg.escritorioEmail)));
+  var r = processarEnvio_(eventoPost_(envioValidoDeExemplo_(cfg.escritorioEmail)), { semLogin: true });
   var linhas = ['===== TESTE DE ENVIO COMPLETO =====',
     'Tempo: ' + ((Date.now() - inicio) / 1000).toFixed(1) + ' s',
     'ok: ' + r.ok + (r.erro ? ' | erro: ' + r.erro : ''),

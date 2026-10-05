@@ -1,18 +1,21 @@
 # Fioconecta · Matching de Oportunidades
 
-Ferramenta do Escritório de Captação de Recursos da Presidência da Fiocruz. O pesquisador descreve o projeto num formulário web (ou envia o documento do projeto para a IA sugerir o preenchimento), e o sistema compara a demanda com a base de editais e financiadores mantida pelo Escritório numa planilha Google. Depois mostra as oportunidades mais aderentes, cada uma com a justificativa da nota.
+Ferramenta do Escritório de Captação de Recursos da Presidência da Fiocruz. O pesquisador entra com o e-mail institucional (código enviado por e-mail) e vê a lista completa de editais da base mantida pelo Escritório numa planilha Google. Em cada edital, pode avaliar a aderência do seu projeto. Também pode comparar o projeto com toda a base de uma vez e gerar um rascunho de proposta. O projeto é descrito num formulário, ou a IA sugere o preenchimento a partir do documento do projeto. Toda nota vem com justificativa.
 
 > **A IA apoia, não decide.** Toda nota vem com justificativa. Prazos, valores e links vêm sempre da planilha, nunca da IA.
 
 - **Página publicada:** https://dubmuniz.github.io/matching/
-- **Modo de teste, sem enviar nada:** https://dubmuniz.github.io/matching/?mock=1 (também há `?mock=vazio` e `?mock=erro`). No modo de teste, a leitura de arquivo e o rascunho de proposta usam exemplos fixos, e o XLSX de exemplo pode ser baixado.
+- **Modo de teste, sem enviar nada:** https://dubmuniz.github.io/matching/?mock=1 (também há `?mock=vazio`, `?mock=erro` e `?mock=login`, que mostra a tela de entrada; o código de teste é `123456`). No modo de teste, a leitura de arquivo e o rascunho de proposta usam exemplos fixos, e o XLSX de exemplo pode ser baixado.
 - **Especificação completa:** [`BRIEFING_Fioconecta_Matching.md`](BRIEFING_Fioconecta_Matching.md)
 
 ```
 Página (GitHub Pages, pasta docs/)  ──POST──▶  Apps Script (app da web)  ──▶  Claude (API da Anthropic)
-        formulário + cards          ◀─JSON──    valida, lê a planilha,         avalia a aderência
-                                                grava "Demandas", envia e-mail
+  entrar · lista de oportunidades   ◀─JSON──    login por código, valida,      avalia a aderência
+  · formulário · cards                          lê a planilha, grava "Demandas"
+                                                e "Acessos", envia e-mail
 ```
+
+**Telas:** entrar (e-mail institucional + código de 6 números, válido por 30 dias no navegador) → **Oportunidades** (lista completa, com busca e filtro de prazo; cada edital tem o botão *Avaliar meu projeto para este edital*) → **Avaliar meu projeto** (formulário; com um edital escolhido, a IA avalia só esse edital; sem edital, compara com toda a base).
 
 ---
 
@@ -83,6 +86,8 @@ O projeto do matching é **separado** da planilha (*standalone*). O script antig
    | `Resultados` | montagem das seções e dos cards |
    | `Registro` | aba Demandas e e-mails |
    | `Seguranca` | validação do formulário e proteções contra abuso |
+   | `Acesso` | login por código enviado ao e-mail, passe de 30 dias e aba Acessos |
+   | `Catalogo` | lista completa de oportunidades da página inicial |
    | `Extracao` | leitura do arquivo enviado pelo pesquisador (pré-preenchimento) |
    | `Proposta` | rascunho de proposta (ficha, marco lógico, orçamento e Gantt) para um edital escolhido |
    | `Codigo` | `doGet` / `doPost` (o app da web) |
@@ -106,6 +111,11 @@ Em ⚙️ **Configurações do projeto → Propriedades do script → Adicionar 
 | `MODELO_CLAUDE` | não (padrão: `claude-sonnet-5`) | modelo da IA |
 | `ESFORCO_CLAUDE` | não (padrão: `low`) | `low` / `medium` / `high`: valores mais altos dão uma análise mais cuidadosa, porém mais lenta e cara |
 | `MAX_TOKENS_CLAUDE` | não (padrão: 16000) | limite de resposta da IA |
+| `LOGIN_ATIVO` | não (padrão: `sim`) | `nao` desliga o login: a página abre direto e aceita qualquer e-mail (como no protótipo) |
+| `DOMINIOS_LOGIN` | não (padrão: `fiocruz.br`) | quem pode entrar, separado por vírgula. Domínio (correspondência exata, sem subdomínios) ou e-mail completo para liberar uma pessoa de fora, ex.: `fiocruz.br, bmuniz@gmail.com` |
+| `EMAILS_BLOQUEADOS` | não | e-mails sem acesso, separados por vírgula. O bloqueio vale na hora, mesmo para quem já entrou |
+| `RETENCAO_ACESSOS_MESES` | não (padrão: 12) | por quanto tempo a aba *Acessos* guarda os registros |
+| `SEGREDO_PASSE` | **não cadastre** | criado sozinho no primeiro login. Apagar desconecta todo mundo (todos precisam entrar de novo) |
 
 Você também pode preencher os valores na função `configurarPropriedades()`, no arquivo `Config`, e rodá-la uma vez. Mas é mais seguro cadastrar a chave da API direto na tela de propriedades. Se colar a chave no código, volte o valor para `COLE_AQUI` depois de rodar.
 
@@ -122,10 +132,14 @@ No topo do editor, escolha a função e clique em **Executar**. O resultado apar
 | 5 | `testarValidacao` | grátis | entradas inválidas são recusadas (todas as linhas devem começar com ✓) |
 | 6 | `testarEnvioCompleto` | ~US$ 0,13 | envio real: grava em *Demandas* e manda os e-mails para `ESCRITORIO_EMAIL` |
 | 7 | `testarProposta` | ~US$ 0,15–0,30 | gera as duas partes do rascunho de proposta para o primeiro edital; mostra tempo e resumo |
+| 8 | `testarLogin` | grátis | mostra a configuração do login, confere o passe, cria a aba *Acessos* e envia um código para `ESCRITORIO_EMAIL`. **Confira se o e-mail chegou** (e se não caiu no spam) antes de ligar o login para todos |
+
+`testarValidacao` e `testarEnvioCompleto` pulam o login.
 
 Funções de apoio:
 - **`limparLimitesDeTaxa`:** zera os limites de envio durante os testes.
 - **`verUltimosErros`:** mostra os últimos erros do app da web, com o código `ref.` que o usuário vê na página.
+- **`limparAcessosAntigos`:** apaga da aba *Acessos* as linhas com mais de 12 meses. Também roda sozinha, no máximo a cada 6 horas, depois de um login.
 
 ## 6. Implantar como app da web
 
@@ -134,6 +148,14 @@ Funções de apoio:
 3. Clique em **Implantar**, autorize se o Google pedir e copie a **URL do app da Web**. Ela termina em `/exec`.
 4. Para conferir, abra a URL no navegador: deve aparecer `{"ok":true}`.
 5. Coloque a URL em [`docs/config.js`](docs/config.js), no campo `webAppUrl`. A URL não é secreta: as proteções ficam no servidor.
+
+### Login e aba *Acessos*
+
+- O pesquisador digita o e-mail, recebe um código de 6 números (vale 10 minutos; 5 tentativas) e fica conectado por 30 dias naquele navegador. O botão **Sair** desconecta.
+- Com o login ligado, o e-mail usado em todo envio é o confirmado no acesso, nunca o digitado no formulário.
+- A aba **Acessos** é criada sozinha, com uma linha por evento: *Código enviado*, *Login confirmado*, *Código incorreto*, *Código bloqueado*, *Acesso recusado* (e-mail sem acesso), *Lista de oportunidades* (no máximo uma vez a cada 6 horas por pessoa), *Matching*, *Avaliação de edital*, *Leitura de arquivo* e *Proposta*. O código nunca é gravado.
+- Para tirar o acesso de alguém: coloque o e-mail em `EMAILS_BLOQUEADOS`. Para desconectar todo mundo: apague `SEGREDO_PASSE`.
+- Cada código gasta 1 e-mail da cota diária do Apps Script (seção 11).
 
 ## 7. Publicar a página no GitHub Pages
 
@@ -147,6 +169,7 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 ## 8. Atualizar depois de mudar o código
 
 - **Apps Script:** cole o arquivo alterado no editor. Depois vá em **Implantar → Gerenciar implantações → ✏️ Editar → Versão: Nova versão → Implantar**. **Sem esse passo, o site continua usando o código antigo.** A URL não muda.
+- **Ordem:** quando a mudança envolve os dois lados (como o login e a lista de oportunidades), **atualize e implante o Apps Script primeiro** e só depois publique a página. Com a página nova e o Apps Script antigo, a lista mostra o código V2.
 - **Página (`docs/`):** ao alterar `styles.css`, `app.js`, `config.js` ou imagens, aumente o número `?v=N` nas referências em `docs/index.html`. O GitHub Pages guarda arquivos em cache por até 10 minutos. Se a página parecer antiga, recarregue com **Ctrl+Shift+R**.
 
 ## 9. Antes da divulgação ampla
@@ -158,6 +181,7 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 2. **Conta institucional:** para levar o projeto para a conta do Escritório, faça uma cópia do projeto (ou recrie seguindo este guia) na conta dona da planilha institucional. Cadastre as propriedades, implante e troque a `webAppUrl`. Nenhum código muda.
 3. **Chave da API do Escritório:** troque `ANTHROPIC_API_KEY` e revogue a chave pessoal na Console da Anthropic.
 4. **Limite de gasto** configurado na Console da Anthropic (seção 1).
+5. **Login:** rode `testarLogin` e confira se o código chega na caixa `@fiocruz.br`. Se não chegar, deixe `LOGIN_ATIVO=nao` até resolver. Para liberar pessoas de fora da Fiocruz, acrescente o e-mail completo em `DOMINIOS_LOGIN`.
 
 ## 10. Solução de problemas
 
@@ -175,6 +199,11 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 | "Não foi possível gerar esta parte da proposta…" | a IA falhou ou demorou demais | tente de novo; se repetir, `verUltimosErros()` |
 | "Este edital não está mais disponível…" | o edital foi desativado, marcado como vedado ou saiu da planilha | refaça o matching |
 | "(código V1)" ao gerar a proposta | o Apps Script publicado ainda não tem a fase 2B | cole `Proposta`, `Seguranca`, `Codigo` e `Testes` atualizados e crie uma **nova versão** da implantação (seção 8) |
+| "(código V2)" na lista de oportunidades | o Apps Script publicado ainda não tem o login e a lista | cole `Acesso`, `Catalogo` e os demais arquivos atualizados e crie uma **nova versão** da implantação (seção 8) |
+| O código de acesso não chega | e-mail na caixa de spam, filtro do servidor de e-mail ou cota diária esgotada | procure no spam; rode `testarLogin`; enquanto isso, `LOGIN_ATIVO=nao` libera a página |
+| "Este e-mail não tem acesso à plataforma" | e-mail fora de `DOMINIOS_LOGIN` (subdomínios como `@ioc.fiocruz.br` também ficam de fora) ou em `EMAILS_BLOQUEADOS` | acrescente o domínio ou o e-mail completo em `DOMINIOS_LOGIN` |
+| "Sua sessão expirou" | passe com mais de 30 dias, `SEGREDO_PASSE` apagado ou e-mail bloqueado | entrar de novo |
+| Edital novo não aparece na lista | a lista fica 10 minutos em cache | aguarde 10 minutos e recarregue |
 | "(código X1)" ao gerar a proposta | o navegador não conseguiu montar a planilha | atualize o navegador e tente de novo |
 | Página antiga ou sem estilo | cache | Ctrl+Shift+R; confira se o `?v=N` foi aumentado |
 | Edital com integridade "Não avaliado" que deveria ter status | nome do parceiro diferente nas duas abas | `diagnosticoBase()` lista os casos; iguale a grafia |
@@ -186,12 +215,15 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 |---|---|
 | Custo por demanda (28 editais, 43 financiadores) | ~US$ 0,13 (medido em teste real) |
 | Tempo de resposta | 30–60 s |
-| Envios por e-mail | 3 a cada 24 h |
+| Envios por e-mail (matching com toda a base) | 3 a cada 24 h |
 | Envios no total | 30 por hora |
+| Avaliação de um edital escolhido | ~US$ 0,02–0,04 (só um edital vai para a IA); 10 por e-mail a cada 24 h, 30 por hora; só o Escritório recebe e-mail |
+| Códigos de acesso | 5 por e-mail a cada 24 h, 30 por hora; cada código gasta 1 e-mail |
+| Lista de oportunidades | sem custo de IA; 200 acessos por e-mail a cada 24 h |
 | Tamanho do envio | até 20 KB (formulário); arquivo para leitura: até 10 MB |
 | Leitura de arquivo (pré-preenchimento) | ~US$ 0,05–0,20 por arquivo; 5 por e-mail a cada 24 h, 30 por hora |
 | Rascunho de proposta (XLSX) | ~US$ 0,15–0,30 por proposta (2 chamadas de 30–60 s); 5 por e-mail a cada 24 h, 20 por hora |
-| E-mails por dia (conta Gmail gratuita) | ~100 destinatários (cada demanda usa 1 ou 2) |
+| E-mails por dia (conta Gmail gratuita) | ~100 destinatários (cada demanda usa 1 ou 2; cada código de acesso, 1). Com o login, vale migrar para a conta institucional (seção 9), que tem cota maior |
 
 ## 12. Caminho B: clasp (opcional)
 

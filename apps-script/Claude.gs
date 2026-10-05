@@ -26,11 +26,15 @@ var LIMITE_TEXTO_SAIDA_ = 400;
 /**
  * Executa o matching com a IA: monta a mensagem, chama o Claude e valida.
  * Se a resposta não for JSON válido, tenta mais uma vez (seção 6.3).
+ * @param {{ individual?: boolean }} opcoes  individual: avaliação de um único edital escolhido
  * @return {{ resultado: Object, tentativas: number, uso: Object[] }}
  * @throws Error com mensagem técnica (o chamador mostra uma mensagem amigável ao usuário)
  */
-function executarMatchingIA_(cfg, demanda, oportunidades, financiadores) {
+function executarMatchingIA_(cfg, demanda, oportunidades, financiadores, opcoes) {
   if (!cfg.anthropicApiKey) throw new Error('Propriedade ANTHROPIC_API_KEY não configurada.');
+  var system = (opcoes && opcoes.individual)
+    ? SYSTEM_PROMPT_MATCHING + '\n\n' + PROMPT_AVALIACAO_INDIVIDUAL
+    : SYSTEM_PROMPT_MATCHING;
 
   var mensagem = montarMensagemMatching(demanda, oportunidades, financiadores);
   var ids = oportunidades.map(function (o) { return o.id; });
@@ -40,7 +44,7 @@ function executarMatchingIA_(cfg, demanda, oportunidades, financiadores) {
 
   for (var tentativa = 1; tentativa <= 2; tentativa++) {
     var texto = tentativa === 1 ? mensagem : mensagem + '\n\n' + PROMPT_AVISO_NOVA_TENTATIVA;
-    var resposta = chamarClaudeMatching_(cfg, texto);
+    var resposta = chamarClaudeMatching_(cfg, texto, system);
     uso.push(resposta.uso);
 
     if (resposta.stopReason === 'refusal') {
@@ -66,9 +70,9 @@ function executarMatchingIA_(cfg, demanda, oportunidades, financiadores) {
   throw new Error('Resposta da IA inválida após 2 tentativas: ' + ultimoErro);
 }
 
-function chamarClaudeMatching_(cfg, textoUsuario) {
+function chamarClaudeMatching_(cfg, textoUsuario, system) {
   return chamarClaude_(cfg, {
-    system: SYSTEM_PROMPT_MATCHING,
+    system: system || SYSTEM_PROMPT_MATCHING,
     conteudo: textoUsuario,
     schema: SCHEMA_RESPOSTA_MATCHING,
     maxTokens: cfg.maxTokens

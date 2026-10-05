@@ -14,7 +14,8 @@
 var CABECALHO_DEMANDAS = [
   'Data/hora', 'ID demanda', 'Nome', 'E-mail', 'Unidade', 'Título', 'Resumo', 'Problema', 'Objetivos',
   'Áreas', 'Abrangência', 'Maturidade', 'Valor estimado', 'Horizonte', 'Parceiros', 'Idiomas',
-  'Resultado (JSON)', 'Top 3 (texto)', 'Versão do prompt', 'Status triagem'
+  'Resultado (JSON)', 'Top 3 (texto)', 'Versão do prompt', 'Status triagem',
+  'Edital avaliado'   // coluna nova (à direita): preenchida só na avaliação de um edital escolhido
 ];
 var STATUS_TRIAGEM_INICIAL = 'Nova';
 var LIMITE_CELULA_ = 49000; // o Sheets aceita até 50.000 caracteres por célula
@@ -57,8 +58,10 @@ function gerarIdDemanda(dataAAAAMMDD, aleatorio) {
 /**
  * Valores da linha, na ordem de CABECALHO_DEMANDAS.
  * @param {Object|null} resultado  saída de montarResultado(), ou null se a IA falhou
+ * @param {{ versaoPrompt?: string, editalAvaliado?: string }} opcoes
  */
-function montarLinhaDemanda(dataHora, idDemanda, demanda, resultado, erroIA) {
+function montarLinhaDemanda(dataHora, idDemanda, demanda, resultado, erroIA, opcoes) {
+  opcoes = opcoes || {};
   var valores = {
     'Data/hora': dataHora,
     'ID demanda': idDemanda,
@@ -78,8 +81,9 @@ function montarLinhaDemanda(dataHora, idDemanda, demanda, resultado, erroIA) {
     'Idiomas': (demanda.idiomas || []).join('; '),
     'Resultado (JSON)': resultado ? JSON.stringify(resultado) : ('ERRO NA IA: ' + (erroIA || 'desconhecido')),
     'Top 3 (texto)': resultado ? top3Texto(resultado) : '—',
-    'Versão do prompt': PROMPT_VERSAO,
-    'Status triagem': STATUS_TRIAGEM_INICIAL
+    'Versão do prompt': opcoes.versaoPrompt || PROMPT_VERSAO,
+    'Status triagem': STATUS_TRIAGEM_INICIAL,
+    'Edital avaliado': opcoes.editalAvaliado || ''
   };
   return CABECALHO_DEMANDAS.map(function (c) { return protegerCelula(valores[c]); });
 }
@@ -148,14 +152,20 @@ function linhaTabela_(rotulo, valor) {
     '</td><td style="padding:2px 0;white-space:pre-wrap">' + escaparHtml(valor) + '</td></tr>';
 }
 
-/** E-mail ao Escritório: dados completos da demanda, 5 melhores cards e link para a planilha. */
-function montarEmailEscritorio(demanda, idDemanda, resultado, urlPlanilha, erroIA) {
-  var assunto = ('[Fioconecta] Nova demanda: ' + demanda.titulo + ' — ' + nomeDaUnidade(demanda))
+/**
+ * E-mail ao Escritório: dados completos da demanda, 5 melhores cards e link para a planilha.
+ * @param {{ editalAvaliado?: string }} opcoes  avaliação de um edital escolhido pelo pesquisador
+ */
+function montarEmailEscritorio(demanda, idDemanda, resultado, urlPlanilha, erroIA, opcoes) {
+  var avaliado = (opcoes && opcoes.editalAvaliado) || '';
+  var assunto = ((avaliado ? '[Fioconecta] Avaliação de edital: ' : '[Fioconecta] Nova demanda: ') +
+    demanda.titulo + ' — ' + nomeDaUnidade(demanda))
     .replace(/[\r\n]+/g, ' ').slice(0, 250);
   var html = [
     '<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.45;color:#222;max-width:720px">',
-    '<h2 style="margin:0 0 8px">Nova demanda ' + escaparHtml(idDemanda) + '</h2>',
+    '<h2 style="margin:0 0 8px">' + (avaliado ? 'Avaliação de edital ' : 'Nova demanda ') + escaparHtml(idDemanda) + '</h2>',
     '<table style="border-collapse:collapse">',
+    avaliado ? linhaTabela_('Edital avaliado', avaliado) : '',
     linhaTabela_('Nome', demanda.nome),
     linhaTabela_('E-mail', demanda.email),
     linhaTabela_('Unidade', nomeDaUnidade(demanda)),
@@ -180,7 +190,8 @@ function montarEmailEscritorio(demanda, idDemanda, resultado, urlPlanilha, erroI
   ].join('\n');
 
   var texto = [
-    'Nova demanda ' + idDemanda,
+    (avaliado ? 'Avaliação de edital ' : 'Nova demanda ') + idDemanda,
+    avaliado ? 'Edital avaliado: ' + avaliado : '',
     'Nome: ' + demanda.nome,
     'E-mail: ' + demanda.email,
     'Unidade: ' + nomeDaUnidade(demanda),
@@ -236,13 +247,20 @@ function obterAbaDemandas_(ss) {
 }
 
 /**
- * Grava uma linha na aba Demandas. Respeita a ordem atual das colunas (localizadas pelo nome);
- * colunas do cabeçalho padrão que tenham sido apagadas são ignoradas.
+ * Grava uma linha na aba Demandas. Respeita a ordem atual das colunas (localizadas pelo nome).
+ * Colunas novas do cabeçalho padrão (ex.: 'Edital avaliado') que ainda não existam na aba
+ * são criadas à direita das existentes.
  */
 function registrarDemanda_(ss, linhaPadrao) {
   var sh = obterAbaDemandas_(ss);
   var ultimaCol = Math.max(sh.getLastColumn(), 1);
   var indice = mapearCabecalhos(sh.getRange(1, 1, 1, ultimaCol).getDisplayValues()[0]);
+  CABECALHO_DEMANDAS.forEach(function (nome) {
+    if (indice[normalizarCabecalho(nome)]) return;
+    ultimaCol++;
+    sh.getRange(1, ultimaCol).setValue(nome);
+    indice[normalizarCabecalho(nome)] = ultimaCol;
+  });
   var linha = new Array(ultimaCol);
   for (var i = 0; i < ultimaCol; i++) linha[i] = '';
   CABECALHO_DEMANDAS.forEach(function (nome, i) {
@@ -252,10 +270,15 @@ function registrarDemanda_(ss, linhaPadrao) {
   sh.appendRow(linha);
 }
 
-function enviarEmails_(cfg, demanda, idDemanda, resultado, erroIA) {
+/**
+ * @param {{ editalAvaliado?: string }} opcoes  na avaliação de um edital escolhido não há cópia ao
+ *   pesquisador (ele vê o resultado na tela e pode avaliar vários editais por dia)
+ */
+function enviarEmails_(cfg, demanda, idDemanda, resultado, erroIA, opcoes) {
+  opcoes = opcoes || {};
   if (cfg.escritorioEmail) {
     var url = 'https://docs.google.com/spreadsheets/d/' + encodeURIComponent(cfg.spreadsheetId) + '/edit';
-    var e1 = montarEmailEscritorio(demanda, idDemanda, resultado, url, erroIA);
+    var e1 = montarEmailEscritorio(demanda, idDemanda, resultado, url, erroIA, opcoes);
     MailApp.sendEmail({
       to: cfg.escritorioEmail,
       subject: e1.assunto,
@@ -268,7 +291,7 @@ function enviarEmails_(cfg, demanda, idDemanda, resultado, erroIA) {
     console.error('ESCRITORIO_EMAIL não configurado: e-mail ao Escritório não enviado.');
   }
 
-  if (dominioPermitidoParaCopia(demanda.email, cfg.dominiosCopia)) {
+  if (!opcoes.editalAvaliado && dominioPermitidoParaCopia(demanda.email, cfg.dominiosCopia)) {
     var e2 = montarEmailPesquisador(demanda, idDemanda, resultado);
     MailApp.sendEmail({
       to: demanda.email,

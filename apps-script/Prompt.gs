@@ -58,6 +58,20 @@ var SYSTEM_PROMPT_MATCHING = [
   '}'
 ].join('\n');
 
+/**
+ * Avaliação de UM edital escolhido pelo pesquisador na lista de oportunidades.
+ * Acrescentado ao fim do SYSTEM_PROMPT_MATCHING. Mudou o texto, incremente PROMPT_VERSAO_INDIVIDUAL.
+ */
+var PROMPT_VERSAO_INDIVIDUAL = 'avaliacao-v1';
+
+var PROMPT_AVALIACAO_INDIVIDUAL = [
+  'MODO DE AVALIAÇÃO INDIVIDUAL (prevalece sobre as INSTRUÇÕES DE SAÍDA acima)',
+  'O pesquisador escolheu UM edital específico para avaliar a aderência do projeto. Nesta resposta:',
+  '- inclua SEMPRE a única oportunidade fornecida em "oportunidades", com a nota que ela merecer, mesmo abaixo de 40;',
+  '- deixe "financiadores" como lista vazia;',
+  '- seja franco: se a aderência for baixa, explique o motivo em "lacunas_e_riscos" e indique em "proximo_passo" o que precisaria mudar no projeto para concorrer.'
+].join('\n');
+
 var PROMPT_AVISO_NOVA_TENTATIVA = 'Sua resposta anterior não era JSON válido. Responda apenas com o JSON.';
 
 /**
@@ -211,6 +225,8 @@ if (typeof module !== 'undefined') {
     PROMPT_VERSAO: PROMPT_VERSAO,
     SYSTEM_PROMPT_MATCHING: SYSTEM_PROMPT_MATCHING,
     PROMPT_AVISO_NOVA_TENTATIVA: PROMPT_AVISO_NOVA_TENTATIVA,
+    PROMPT_VERSAO_INDIVIDUAL: PROMPT_VERSAO_INDIVIDUAL,
+    PROMPT_AVALIACAO_INDIVIDUAL: PROMPT_AVALIACAO_INDIVIDUAL,
     SCHEMA_RESPOSTA_MATCHING: SCHEMA_RESPOSTA_MATCHING,
     cortarTexto: cortarTexto,
     demandaParaIA: demandaParaIA,
