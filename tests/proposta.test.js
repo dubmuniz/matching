@@ -172,11 +172,11 @@ test('proposta: pedidos inválidos são recusados sem chamar a IA', () => {
   }
 });
 
-test('proposta: limite de 5 por e-mail em 24 h (parte 1)', () => {
-  const respostas = Array.from({ length: 6 }, () => respostaClaude(PARTE1_IA));
+test('proposta: limite de 8 por e-mail em 24 h (parte 1)', () => {
+  const respostas = Array.from({ length: 9 }, () => respostaClaude(PARTE1_IA));
   const { ctx } = criarContexto(montarPlanilha(), respostas);
-  for (let i = 0; i < 5; i++) assert.equal(postar(ctx, pedidoProposta(1)).ok, true);
-  assert.match(postar(ctx, pedidoProposta(1)).erro, /limite de 5 rascunhos/);
+  for (let i = 0; i < 8; i++) assert.equal(postar(ctx, pedidoProposta(1)).ok, true);
+  assert.match(postar(ctx, pedidoProposta(1)).erro, /limite de 8 rascunhos/);
 });
 
 test('proposta: resposta sem outputs conta como inválida e é refeita uma vez', () => {

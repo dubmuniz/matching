@@ -53,6 +53,8 @@ var PROPRIEDADES_MATCHING = [
   'DOMINIOS_LOGIN',
   'EMAILS_BLOQUEADOS',
   'RETENCAO_ACESSOS_MESES',
+  'EMAILS_SEM_LIMITE',
+  'EMAILS_PRIORIDADE',
   'SEGREDO_PASSE'
 ];
 
@@ -134,6 +136,8 @@ function obterConfigMatching_() {
     loginAtivo: !/^(nao|não|false|0)$/i.test(String(p.LOGIN_ATIVO || '').trim()),
     dominiosLogin: listaDePropriedade_(p.DOMINIOS_LOGIN, ['fiocruz.br']),
     emailsBloqueados: listaDePropriedade_(p.EMAILS_BLOQUEADOS, []),
+    // Cópia das demandas prioritárias (opcional), além de ESCRITORIO_EMAIL.
+    emailsPrioridade: listaDePropriedade_(p.EMAILS_PRIORIDADE, []),
     retencaoAcessosMeses: parseInt(p.RETENCAO_ACESSOS_MESES, 10) >= 1
       ? parseInt(p.RETENCAO_ACESSOS_MESES, 10) : CONFIG_MATCHING.RETENCAO_ACESSOS_MESES_PADRAO
   };

@@ -7,7 +7,7 @@
  * Funções puras: rodam no Apps Script e no Node (tests/prompt.test.js).
  */
 
-var PROMPT_VERSAO = 'matching-v2';
+var PROMPT_VERSAO = 'matching-v3';
 
 var SYSTEM_PROMPT_MATCHING = [
   'Você é um analista sênior de captação de recursos internacionais do Escritório de Captação da Presidência da Fiocruz (Brasil). Sua tarefa é avaliar a aderência entre UMA demanda de projeto apresentada por uma unidade da Fiocruz e uma lista de oportunidades de financiamento (editais) e de financiadores, fornecidas pelo Escritório.',
@@ -30,6 +30,7 @@ var SYSTEM_PROMPT_MATCHING = [
   'INSTRUÇÕES DE SAÍDA',
   '- Em "oportunidades", inclua no máximo 12 itens, apenas com nota >= 40, ordenados da maior para a menor nota.',
   '- Em "financiadores", inclua no máximo 6 itens, apenas com nota >= 60, avaliando a organização como possível parceira (mesmo sem edital aberto).',
+  '- Em "carater_estrategico", indique se a demanda tem caráter ESTRATÉGICO E ESTRUTURANTE para a Fiocruz, por exemplo: cria ou fortalece infraestrutura, plataforma ou rede de pesquisa de longo prazo; envolve várias unidades ou instituições; tem potencial de impacto em escala no SUS ou em políticas públicas; ou posiciona a Fiocruz em parcerias nacionais ou internacionais relevantes. Use "estrategico": true só quando a demanda trouxer elementos concretos disso (não presuma). Em "justificativa", diga em até 2 frases quais elementos apontam esse caráter; deixe vazio quando for false. Essa avaliação é interna: serve para o Escritório decidir se procura o pesquisador.',
   '- Em "lacunas_da_demanda", escreva até 4 sugestões práticas para o pesquisador fortalecer a candidatura (aparecem na página sob o título "Para fortalecer sua candidatura"). Cada sugestão começa com um verbo no imperativo e diz o que fazer e por quê, em linguagem simples (ex.: "Comece a conversar com uma instituição estrangeira que possa ser coexecutora: vários editais sugeridos exigem isso.").',
   '- Nessas sugestões, nunca diga que a demanda "não informa", "não indica" ou que "falta" algo, e não peça informações que o formulário não tem. Quando a sugestão depender de um campo do formulário que ficou vago ou vazio, cite o campo pelo nome exato: Título do projeto, Resumo, Problema ou necessidade, Objetivos principais, Áreas temáticas, Abrangência geográfica, Estágio de maturidade, Valor estimado necessário, Horizonte de início desejado, Parceiros internacionais já envolvidos, Idiomas em que a equipe pode submeter (ex.: "Para refinar o resultado, detalhe no campo Parceiros internacionais já envolvidos as instituições com quem já conversou.").',
   '',
@@ -37,6 +38,7 @@ var SYSTEM_PROMPT_MATCHING = [
   '{',
   '  "resumo_demanda": "string (1 frase)",',
   '  "lacunas_da_demanda": ["string"],',
+  '  "carater_estrategico": {"estrategico": false, "justificativa": "string"},',
   '  "oportunidades": [',
   '    {',
   '      "id": "string (exatamente como fornecido)",',
@@ -83,10 +85,19 @@ var PROMPT_AVISO_NOVA_TENTATIVA = 'Sua resposta anterior não era JSON válido. 
 var SCHEMA_RESPOSTA_MATCHING = {
   type: 'object',
   additionalProperties: false,
-  required: ['resumo_demanda', 'lacunas_da_demanda', 'oportunidades', 'financiadores'],
+  required: ['resumo_demanda', 'lacunas_da_demanda', 'carater_estrategico', 'oportunidades', 'financiadores'],
   properties: {
     resumo_demanda: { type: 'string' },
     lacunas_da_demanda: { type: 'array', items: { type: 'string' } },
+    carater_estrategico: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['estrategico', 'justificativa'],
+      properties: {
+        estrategico: { type: 'boolean' },
+        justificativa: { type: 'string' }
+      }
+    },
     oportunidades: {
       type: 'array',
       items: {

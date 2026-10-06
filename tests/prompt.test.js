@@ -5,20 +5,31 @@ const fs = require('node:fs');
 const path = require('node:path');
 const P = require('../apps-script/Prompt.gs');
 
-test('system prompt é o texto da seção 6.1 do briefing, exceto as sugestões ao pesquisador (matching-v2)', () => {
+test('system prompt é o texto da seção 6.1 do briefing, com as decisões posteriores (matching-v3)', () => {
   const briefing = fs.readFileSync(path.join(__dirname, '..', 'BRIEFING_Fioconecta_Matching.md'), 'utf8');
   const secao = briefing.split('### 6.1 System prompt')[1];
   const bloco = secao.match(/```\n([\s\S]*?)\n```/)[1];
-  // Decisão de 05/10/2026: "lacunas_da_demanda" virou "Para fortalecer sua candidatura" (ações, não faltas).
-  const linhaBriefing = '- Em "lacunas_da_demanda", liste até 4 informações que faltam na demanda e que melhorariam o matching.';
-  assert.ok(bloco.includes(linhaBriefing));
-  const linhasNovas = P.SYSTEM_PROMPT_MATCHING.split('\n').filter(l => l.startsWith('- Em "lacunas_da_demanda"') || l.startsWith('- Nessas sugestões'));
-  assert.equal(linhasNovas.length, 2);
-  assert.equal(P.SYSTEM_PROMPT_MATCHING, bloco.replace(linhaBriefing, linhasNovas.join('\n')));
-  assert.match(linhasNovas[0], /Para fortalecer sua candidatura/);
-  assert.match(linhasNovas[1], /nunca diga que a demanda "não informa"/);
-  assert.match(linhasNovas[1], /Parceiros internacionais já envolvidos/);
-  assert.equal(P.PROMPT_VERSAO, 'matching-v2');
+  const nossas = P.SYSTEM_PROMPT_MATCHING.split('\n');
+  const pega = (prefixo) => { const l = nossas.filter(x => x.startsWith(prefixo)); assert.equal(l.length, 1, prefixo); return l[0]; };
+
+  // 05/10/2026 (v2): "lacunas_da_demanda" virou "Para fortalecer sua candidatura" (ações, não faltas).
+  const lacunasBriefing = '- Em "lacunas_da_demanda", liste até 4 informações que faltam na demanda e que melhorariam o matching.';
+  const lacunas = pega('- Em "lacunas_da_demanda"') + '\n' + pega('- Nessas sugestões');
+  // 06/10/2026 (v3): caráter estratégico e estruturante, para o e-mail de demanda prioritária.
+  const finBriefing = '- Em "financiadores", inclua no máximo 6 itens, apenas com nota >= 60, avaliando a organização como possível parceira (mesmo sem edital aberto).';
+  const carater = pega('- Em "carater_estrategico"');
+  const jsonLacunas = '  "lacunas_da_demanda": ["string"],';
+
+  const esperado = bloco
+    .replace(lacunasBriefing, lacunas)
+    .replace(finBriefing, finBriefing + '\n' + carater)
+    .replace(jsonLacunas, jsonLacunas + '\n  "carater_estrategico": {"estrategico": false, "justificativa": "string"},');
+  assert.equal(P.SYSTEM_PROMPT_MATCHING, esperado);
+  assert.match(lacunas, /Para fortalecer sua candidatura/);
+  assert.match(lacunas, /nunca diga que a demanda "não informa"/);
+  assert.match(carater, /ESTRATÉGICO E ESTRUTURANTE/);
+  assert.match(carater, /não presuma/);
+  assert.equal(P.PROMPT_VERSAO, 'matching-v3');
 });
 
 test('schema de saída: todos os objetos fechados e com todos os campos obrigatórios', () => {

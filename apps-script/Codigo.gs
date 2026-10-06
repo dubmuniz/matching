@@ -23,8 +23,8 @@ var MENSAGENS_ERRO = {
   formato: 'Não foi possível ler o envio. Recarregue a página e tente de novo.',
   campos: 'Revise os campos destacados.',
   robo: 'Não foi possível confirmar o envio. Recarregue a página e tente de novo.',
-  limiteEmail: 'Você atingiu o limite de 3 envios em 24 horas com este e-mail. Tente novamente amanhã.',
-  limiteAvaliacao: 'Você atingiu o limite de 10 avaliações de edital em 24 horas. Tente novamente amanhã.',
+  limiteEmail: 'Você atingiu o limite de 5 envios em 24 horas com este e-mail. Tente novamente amanhã.',
+  limiteAvaliacao: 'Você atingiu o limite de 15 avaliações de edital em 24 horas. Tente novamente amanhã.',
   limiteLista: 'Muitos acessos à lista de oportunidades. Tente novamente mais tarde.',
   pendente: 'Ainda estamos processando o seu pedido.',
   login: 'Sua sessão expirou ou não é válida. Entre novamente com o seu e-mail.',
@@ -218,9 +218,10 @@ function processarMatching_(dados, cfg) {
     candidatos = preselecionarCandidatos(demanda, base.candidatos, CONFIG_MATCHING.MAX_CANDIDATOS);
     organizacoes = base.organizacoesParaIA;
   }
-  var resultado = null, erroIA = '';
+  var resultado = null, erroIA = '', respostaIA = null;
   try {
     var ia = executarMatchingIA_(cfg, demanda, candidatos, organizacoes, { individual: individual });
+    respostaIA = ia.resultado;
     resultado = montarResultado(ia.resultado, candidatos, organizacoes, { individual: individual });
   } catch (err) {
     erroIA = String(err && err.message ? err.message : err).slice(0, 500);
@@ -235,7 +236,10 @@ function processarMatching_(dados, cfg) {
   );
   var opcoesRegistro = {
     versaoPrompt: individual ? PROMPT_VERSAO + '+' + PROMPT_VERSAO_INDIVIDUAL : PROMPT_VERSAO,
-    editalAvaliado: individual ? edital.id + ' — ' + edital.edital + ' (' + edital.financiador + ')' : ''
+    editalAvaliado: individual ? edital.id + ' — ' + edital.edital + ' (' + edital.financiador + ')' : '',
+    // Valor acima de R$ 5 milhões e/ou caráter estratégico (IA): e-mail próprio ao Escritório.
+    // Fica só no servidor (planilha e e-mails); não vai para a página.
+    prioridade: avaliarPrioridade(demanda, respostaIA)
   };
   try {
     var ss = abrirPlanilhaMatching_(cfg);

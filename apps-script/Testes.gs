@@ -316,6 +316,8 @@ function testarMatching() {
   log('');
   log('Resumo da demanda: ' + res.resumo_demanda);
   log('Para fortalecer sua candidatura: ' + (res.lacunas_da_demanda.join(' | ') || '—'));
+  log('Caráter estratégico (IA): ' + (res.carater_estrategico.estrategico ? 'sim — ' + res.carater_estrategico.justificativa : 'não') +
+      ' | prioritária: ' + (avaliarPrioridade(DEMANDA_EXEMPLO_, res).prioritaria ? 'sim' : 'não'));
 
   var porId = {};
   candidatos.forEach(function (o) { porId[o.id] = o; });

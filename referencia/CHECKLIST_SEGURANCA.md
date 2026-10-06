@@ -89,3 +89,11 @@ Legenda: ✅ atendido · ⚠️ atendido com risco residual ou com ação penden
 | Lista guardada no navegador | ✅ | Só colunas públicas; usada apenas pela mesma pessoa conectada (ou com login desligado); apagada em *Sair* e quando o servidor recusa o passe. |
 | Repetição automática | ✅ | Lista e "entrar" são repetidos uma vez. Matching, extração e proposta só são repetidos com o mesmo idPedido, e o servidor devolve o resultado guardado: sem nova chamada à IA, sem cota gasta e sem demanda duplicada (teste). |
 | Resultado guardado por idPedido | ✅ | Chave = hash(ação + e-mail do passe + idPedido); idPedido é UUID aleatório gerado no navegador (16–64 caracteres, validado). Com login, outra pessoa não recebe o resultado (teste). Guardado só 10 min no `CacheService`; erro inesperado libera o pedido. |
+
+## Demandas prioritárias e limites (06/10/2026)
+
+| Item | Situação | Onde / como |
+|---|---|---|
+| Avaliação estratégica da IA fica interna | ✅ | `carater_estrategico` não entra em `montarResultado()`: vai só para a planilha e o e-mail ao Escritório (teste confere que a resposta à página não a contém). A cópia ao pesquisador diz apenas que o Escritório fará contato. |
+| Texto da IA no e-mail | ✅ | Motivos escapados (`escaparHtml`) e cortados em 400 caracteres; só `estrategico === true` explícito conta. |
+| `EMAILS_SEM_LIMITE` | ⚠️ | Só em Propriedades do script. Com o login ligado, o e-mail é o do passe; com o login desligado, qualquer pessoa que digitar um desses e-mails escapa do limite por e-mail (o global de 30/h continua). Use só durante os testes. |

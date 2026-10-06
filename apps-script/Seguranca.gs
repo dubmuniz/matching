@@ -78,7 +78,7 @@ var CAMPOS_FORMULARIO = [
 ];
 
 var LIMITE_CORPO_BYTES = 20 * 1024;
-var LIMITE_ENVIOS_POR_EMAIL = 3;          // a cada 24 h
+var LIMITE_ENVIOS_POR_EMAIL = 5;          // a cada 24 h
 var JANELA_EMAIL_MS = 24 * 60 * 60 * 1000;
 var LIMITE_ENVIOS_GLOBAIS = 30;           // por hora
 var JANELA_GLOBAL_MS = 60 * 60 * 1000;
@@ -88,10 +88,10 @@ var CHAVE_LIMITE_GLOBAL_ = 'LIMITE_GLOBAL';
 // Cotas por tipo de uso. A extração de arquivos (fase 2) tem cota própria.
 var COTAS_TAXA_ = {
   matching: { porEmail: LIMITE_ENVIOS_POR_EMAIL, global: LIMITE_ENVIOS_GLOBAIS, prefixo: PREFIXO_LIMITE_EMAIL_, chaveGlobal: CHAVE_LIMITE_GLOBAL_ },
-  extracao: { porEmail: 5, global: 30, prefixo: 'LIMITE_EXTRACAO_EMAIL_', chaveGlobal: 'LIMITE_EXTRACAO_GLOBAL' },
-  proposta: { porEmail: 5, global: 20, prefixo: 'LIMITE_PROPOSTA_EMAIL_', chaveGlobal: 'LIMITE_PROPOSTA_GLOBAL' },
-  proposta2: { porEmail: 5, global: 20, prefixo: 'LIMITE_PROPOSTA2_EMAIL_', chaveGlobal: 'LIMITE_PROPOSTA2_GLOBAL' },
-  avaliacao: { porEmail: 10, global: 30, prefixo: 'LIMITE_AVALIACAO_EMAIL_', chaveGlobal: 'LIMITE_AVALIACAO_GLOBAL' },
+  extracao: { porEmail: 8, global: 30, prefixo: 'LIMITE_EXTRACAO_EMAIL_', chaveGlobal: 'LIMITE_EXTRACAO_GLOBAL' },
+  proposta: { porEmail: 8, global: 20, prefixo: 'LIMITE_PROPOSTA_EMAIL_', chaveGlobal: 'LIMITE_PROPOSTA_GLOBAL' },
+  proposta2: { porEmail: 8, global: 20, prefixo: 'LIMITE_PROPOSTA2_EMAIL_', chaveGlobal: 'LIMITE_PROPOSTA2_GLOBAL' },
+  avaliacao: { porEmail: 15, global: 30, prefixo: 'LIMITE_AVALIACAO_EMAIL_', chaveGlobal: 'LIMITE_AVALIACAO_GLOBAL' },
   codigo: { porEmail: 5, global: 30, prefixo: 'LIMITE_CODIGO_EMAIL_', chaveGlobal: 'LIMITE_CODIGO_GLOBAL' },
   lista: { porEmail: 200, global: 1000, prefixo: 'LIMITE_LISTA_EMAIL_', chaveGlobal: 'LIMITE_LISTA_GLOBAL' }
 };
@@ -261,7 +261,8 @@ function chaveLimiteEmail_(email, prefixo) {
  *   CacheService só guarda por até 6 h). A chave é um hash do e-mail, não o e-mail;
  * - global: N usos por hora (CacheService).
  * Sem e-mail (lista de oportunidades com o login desligado), vale só o limite global.
- * @param {string} tipo  chave de COTAS_TAXA_ (padrão 'matching': 3 por e-mail, 30 por hora)
+ * E-mails em EMAILS_SEM_LIMITE (Propriedades do script; para testes da equipe) também só têm o limite global.
+ * @param {string} tipo  chave de COTAS_TAXA_ (padrão 'matching': 5 por e-mail, 30 por hora)
  * @return {{ permitido: boolean, motivo?: 'email'|'global'|'ocupado' }}
  */
 function verificarLimiteDeTaxa_(email, tipo) {
@@ -277,7 +278,7 @@ function verificarLimiteDeTaxa_(email, tipo) {
     if (!global.permitido) return { permitido: false, motivo: 'global' };
 
     var chave = '', porEmail = null;
-    if (email) {
+    if (email && !emailSemLimite_(email)) {
       chave = chaveLimiteEmail_(email, cota.prefixo);
       porEmail = aplicarJanelaDeLimite(lerJson_(props.getProperty(chave)), agora, JANELA_EMAIL_MS, cota.porEmail);
       if (!porEmail.permitido) return { permitido: false, motivo: 'email' };
@@ -292,6 +293,12 @@ function verificarLimiteDeTaxa_(email, tipo) {
   } finally {
     trava.releaseLock();
   }
+}
+
+/** E-mails da equipe liberados do limite por e-mail (o limite global continua valendo). */
+function emailSemLimite_(email) {
+  var lista = listaDePropriedade_(PropertiesService.getScriptProperties().getProperty('EMAILS_SEM_LIMITE'), []);
+  return lista.indexOf(String(email).toLowerCase()) >= 0;
 }
 
 function lerJson_(s) {

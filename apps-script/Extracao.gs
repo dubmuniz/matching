@@ -37,7 +37,7 @@ var MENSAGENS_EXTRACAO = {
   grande: 'O arquivo é grande demais. O limite é de 10 MB.',
   vazio: 'Não encontramos texto suficiente no arquivo. Se for um PDF digitalizado (imagem), tente outro formato.',
   ilegivel: 'Não foi possível ler este arquivo. Verifique se o PDF não tem senha e tem no máximo 100 páginas.',
-  limiteEmail: 'Você atingiu o limite de 5 leituras de arquivo em 24 horas com este e-mail. Preencha o formulário manualmente.',
+  limiteEmail: 'Você atingiu o limite de 8 leituras de arquivo em 24 horas com este e-mail. Preencha o formulário manualmente.',
   falha: 'Não foi possível ler o arquivo agora. Tente de novo ou preencha o formulário manualmente.'
 };
 

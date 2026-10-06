@@ -6,6 +6,7 @@ const C = require('../apps-script/Catalogo.gs');
 const { criarContexto, criarAba, respostaClaude, montarPlanilha, envioValido } = require('./ambiente');
 
 const LOGIN = { props: { LOGIN_ATIVO: 'sim' } };
+const RESULTADO_IA_SIMPLES = { resumo_demanda: 'x', lacunas_da_demanda: [], oportunidades: [], financiadores: [] };
 const DIA = 24 * 60 * 60 * 1000;
 
 function postar(ctx, corpo) {
@@ -328,7 +329,7 @@ test('avaliação de um edital: só ele vai para a IA e o card aparece mesmo com
   assert.equal(cab[cab.length - 1], 'Edital avaliado');
   const linha = abas.Demandas.matriz[1];
   assert.match(linha[cab.indexOf('Edital avaliado')], /^LINHA-3 — Call X \(Unitaid\)$/);
-  assert.equal(linha[cab.indexOf('Versão do prompt')], 'matching-v2+avaliacao-v1');
+  assert.equal(linha[cab.indexOf('Versão do prompt')], 'matching-v3+avaliacao-v1');
 
   assert.equal(emails.length, 1, 'só o Escritório recebe e-mail');
   assert.match(emails[0].subject, /Avaliação de edital/);
@@ -345,10 +346,10 @@ test('avaliação de um edital: edital inexistente, inativo ou vedado não chama
 });
 
 test('avaliação de um edital: cota própria, separada da do matching', () => {
-  const respostas = Array.from({ length: 11 }, () => respostaClaude(AVALIACAO_IA));
+  const respostas = Array.from({ length: 16 }, () => respostaClaude(AVALIACAO_IA));
   const { ctx } = criarContexto(montarPlanilha(), respostas);
-  for (let i = 0; i < 10; i++) assert.equal(postar(ctx, envioValido({ idOportunidade: 'LINHA-3' })).ok, true, 'avaliação ' + (i + 1));
-  assert.match(postar(ctx, envioValido({ idOportunidade: 'LINHA-3' })).erro, /10 avaliações/);
+  for (let i = 0; i < 15; i++) assert.equal(postar(ctx, envioValido({ idOportunidade: 'LINHA-3' })).ok, true, 'avaliação ' + (i + 1));
+  assert.match(postar(ctx, envioValido({ idOportunidade: 'LINHA-3' })).erro, /15 avaliações/);
   assert.equal(postar(ctx, envioValido()).ok, true, 'o matching completo continua liberado');
 });
 
@@ -449,4 +450,90 @@ test('com login, o resultado guardado é de cada pessoa', () => {
   const outro = postar(ctx, envioValido({ passe: joao, idOportunidade: 'LINHA-3', idPedido: ID_PEDIDO }));
   assert.equal(outro.ok, false, 'João não recebe o resultado da Maria');
   assert.ok(requisicoes.length > 1, 'o pedido do João chamou a IA de novo');
+});
+
+test('EMAILS_SEM_LIMITE: e-mail da equipe só tem o limite global', () => {
+  const respostas = Array.from({ length: 8 }, () => respostaClaude(RESULTADO_IA_SIMPLES));
+  const { ctx } = criarContexto(montarPlanilha(), respostas, { props: { EMAILS_SEM_LIMITE: 'Teste@Fiocruz.br, outro@fiocruz.br' } });
+  for (let i = 0; i < 7; i++) assert.equal(postar(ctx, envioValido({ email: 'teste@fiocruz.br' })).ok, true, 'envio ' + (i + 1));
+  for (let i = 0; i < 5; i++) postar(ctx, envioValido({ email: 'maria@fiocruz.br' }));
+  assert.match(postar(ctx, envioValido({ email: 'maria@fiocruz.br' })).erro, /limite de 5 envios/);
+});
+
+test('mensagens de limite citam os números das cotas', () => {
+  const { ctx } = criarContexto(montarPlanilha());
+  const cotas = ctx.COTAS_TAXA_;
+  assert.match(ctx.MENSAGENS_ERRO.limiteEmail, new RegExp('limite de ' + cotas.matching.porEmail + ' envios'));
+  assert.match(ctx.MENSAGENS_ERRO.limiteAvaliacao, new RegExp('limite de ' + cotas.avaliacao.porEmail + ' avaliações'));
+  assert.match(ctx.MENSAGENS_EXTRACAO.limiteEmail, new RegExp('limite de ' + cotas.extracao.porEmail + ' leituras'));
+  assert.match(ctx.MENSAGENS_PROPOSTA.limiteEmail, new RegExp('limite de ' + cotas.proposta.porEmail + ' rascunhos'));
+});
+
+// ---------------- demanda prioritária ----------------
+
+const RESPOSTA_ESTRATEGICA = Object.assign({}, RESULTADO_IA_SIMPLES, {
+  carater_estrategico: { estrategico: true, justificativa: 'Cria rede nacional de vigilância com 5 unidades.' }
+});
+
+test('avaliarPrioridade: valor acima de R$ 5 milhões e/ou caráter estratégico', () => {
+  const { ctx } = criarContexto(montarPlanilha());
+  const p = (valor, ia) => JSON.parse(JSON.stringify(ctx.avaliarPrioridade({ valorEstimado: valor }, ia)));
+  assert.deepEqual(p('R$ 1–5 milhões', RESULTADO_IA_SIMPLES), { prioritaria: false, motivos: [] });
+  assert.deepEqual(p('Acima de R$ 5 milhões', null).motivos, ['Valor estimado acima de R$ 5 milhões']);
+  assert.equal(p('Não sei', RESPOSTA_ESTRATEGICA).motivos[0], 'Caráter estratégico e estruturante (avaliação da IA): Cria rede nacional de vigilância com 5 unidades.');
+  assert.equal(p('Acima de R$ 5 milhões', RESPOSTA_ESTRATEGICA).motivos.length, 2);
+  // "estrategico" só vale como true explícito.
+  assert.equal(p('Não sei', { carater_estrategico: { estrategico: 'sim' } }).prioritaria, false);
+});
+
+test('validarRespostaMatching: caráter estratégico normalizado (ausente = false)', () => {
+  const { ctx } = criarContexto(montarPlanilha());
+  const v = (c) => JSON.parse(JSON.stringify(ctx.validarRespostaMatching(JSON.stringify(Object.assign({}, RESULTADO_IA_SIMPLES, c)), [], []).dados.carater_estrategico));
+  assert.deepEqual(v({}), { estrategico: false, justificativa: '' });
+  assert.deepEqual(v({ carater_estrategico: { estrategico: false, justificativa: 'x' } }), { estrategico: false, justificativa: '' });
+  assert.equal(v({ carater_estrategico: { estrategico: true, justificativa: 'y'.repeat(900) } }).justificativa.length, 400);
+});
+
+test('demanda prioritária: e-mail próprio ao Escritório, aviso ao pesquisador e coluna Prioridade', () => {
+  const abas = montarPlanilha();
+  const { ctx, emails } = criarContexto(abas, [respostaClaude(RESPOSTA_ESTRATEGICA)],
+    { props: { EMAILS_PRIORIDADE: 'coordenacao@fiocruz.br' } });
+  const r = postar(ctx, envioValido({ valorEstimado: 'Acima de R$ 5 milhões' }));
+  assert.equal(r.ok, true);
+  assert.ok(!JSON.stringify(r).includes('estrat'), 'a avaliação interna não vai para a página');
+
+  const escritorio = emails.find(m => m.to === 'escritorio@fiocruz.br');
+  assert.match(escritorio.subject, /^\[Fioconecta\] PRIORITÁRIA — Demanda para contato: /);
+  assert.equal(escritorio.cc, 'coordenacao@fiocruz.br');
+  assert.match(escritorio.htmlBody, /entre em contato com o pesquisador para apoiar/);
+  assert.match(escritorio.htmlBody, /Valor estimado acima de R\$ 5 milhões/);
+  assert.match(escritorio.htmlBody, /Cria rede nacional de vigilância/);
+  assert.match(escritorio.body, /DEMANDA PRIORITÁRIA/);
+
+  const pesquisador = emails.find(m => m.to === 'maria@fiocruz.br');
+  assert.match(pesquisador.htmlBody, /vai entrar em contato para apoiar a preparação da submissão/);
+  assert.ok(!pesquisador.htmlBody.includes('Cria rede nacional'), 'motivos internos não vão ao pesquisador');
+
+  const cab = abas.Demandas.matriz[0];
+  assert.equal(cab[cab.length - 1], 'Prioridade');
+  assert.match(abas.Demandas.matriz[1][cab.indexOf('Prioridade')], /^Contato prioritário: Valor estimado acima de R\$ 5 milhões; Caráter estratégico/);
+});
+
+test('demanda comum: e-mail de sempre, sem cópia extra e sem prioridade', () => {
+  const abas = montarPlanilha();
+  const { ctx, emails } = criarContexto(abas, [respostaClaude(RESULTADO_IA_SIMPLES)], { props: { EMAILS_PRIORIDADE: 'coordenacao@fiocruz.br' } });
+  assert.equal(postar(ctx, envioValido()).ok, true);
+  const escritorio = emails.find(m => m.to === 'escritorio@fiocruz.br');
+  assert.match(escritorio.subject, /^\[Fioconecta\] Nova demanda: /);
+  assert.equal(escritorio.cc, undefined);
+  assert.ok(!escritorio.htmlBody.includes('Demanda prioritária'));
+  const cab = abas.Demandas.matriz[0];
+  assert.equal(abas.Demandas.matriz[1][cab.indexOf('Prioridade')], '');
+});
+
+test('demanda acima de R$ 5 milhões é prioritária mesmo se a IA falhar', () => {
+  const abas = montarPlanilha();
+  const { ctx, emails } = criarContexto(abas, [{ codigo: 400, corpo: { error: { message: 'x' } } }]);
+  postar(ctx, envioValido({ valorEstimado: 'Acima de R$ 5 milhões' }));
+  assert.match(emails.find(m => m.to === 'escritorio@fiocruz.br').subject, /PRIORITÁRIA/);
 });

@@ -206,7 +206,7 @@ test('doPost: envio válido grava em Demandas, envia e-mails e devolve só os ca
   assert.equal(dem.length, 2);
   assert.equal(dem[1][1], r.id_demanda);
   assert.equal(dem[1][2], 'Maria Pesquisadora');
-  assert.equal(dem[1][18], 'matching-v2');
+  assert.equal(dem[1][18], 'matching-v3');
   assert.equal(dem[1][19], 'Nova');
   assert.match(dem[1][17], /^1\. \[82\] Climate and Health — Wellcome Trust \(OPP-0001\)/);
 
@@ -266,14 +266,14 @@ test('doPost: entradas inválidas são rejeitadas antes de chamar a IA', () => {
   assert.ok(r.campos.titulo && r.campos.areas);
 });
 
-test('doPost: limite de 3 envios por e-mail em 24 h', () => {
-  const respostas = Array.from({ length: 4 }, () => respostaClaude(RESULTADO_IA));
+test('doPost: limite de 5 envios por e-mail em 24 h', () => {
+  const respostas = Array.from({ length: 6 }, () => respostaClaude(RESULTADO_IA));
   const { ctx, requisicoes, propsUsuario } = criarContexto(montarPlanilha(), respostas);
-  for (let i = 0; i < 3; i++) assert.equal(postar(ctx, envioValido({ email: 'MARIA@fiocruz.br' })).ok, true);
+  for (let i = 0; i < 5; i++) assert.equal(postar(ctx, envioValido({ email: 'MARIA@fiocruz.br' })).ok, true);
   const r = postar(ctx, envioValido({ email: 'maria@fiocruz.br' }));
   assert.equal(r.ok, false);
-  assert.match(r.erro, /limite de 3 envios/);
-  assert.equal(requisicoes.length, 3);
+  assert.match(r.erro, /limite de 5 envios/);
+  assert.equal(requisicoes.length, 5);
   assert.ok(!JSON.stringify(propsUsuario).includes('maria'), 'o e-mail não é guardado em claro');
   assert.equal(postar(ctx, envioValido({ email: 'outra@fiocruz.br' })).ok, true);
 });
@@ -440,12 +440,12 @@ test('extração: entradas inválidas são recusadas sem chamar a IA', () => {
   }
 });
 
-test('extração: limite de 5 por e-mail, separado do limite do matching', () => {
-  const respostas = Array.from({ length: 7 }, () => respostaClaude(EXTRACAO_IA));
+test('extração: limite de 8 por e-mail, separado do limite do matching', () => {
+  const respostas = Array.from({ length: 10 }, () => respostaClaude(EXTRACAO_IA));
   const { ctx } = criarContexto(montarPlanilha(), respostas);
-  for (let i = 0; i < 5; i++) assert.equal(postar(ctx, envioExtracao()).ok, true);
+  for (let i = 0; i < 8; i++) assert.equal(postar(ctx, envioExtracao()).ok, true);
   const r = postar(ctx, envioExtracao());
-  assert.match(r.erro, /limite de 5 leituras/);
+  assert.match(r.erro, /limite de 8 leituras/);
   // O matching do mesmo e-mail continua liberado
   respostas.unshift(respostaClaude(RESULTADO_IA));
   assert.equal(postar(ctx, envioValido({ email: 'maria@fiocruz.br' })).ok, true);

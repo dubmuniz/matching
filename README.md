@@ -115,6 +115,8 @@ Em ⚙️ **Configurações do projeto → Propriedades do script → Adicionar 
 | `DOMINIOS_LOGIN` | não (padrão: `fiocruz.br`) | quem pode entrar, separado por vírgula. Domínio (correspondência exata, sem subdomínios) ou e-mail completo para liberar uma pessoa de fora, ex.: `fiocruz.br, bmuniz@gmail.com` |
 | `EMAILS_BLOQUEADOS` | não | e-mails sem acesso, separados por vírgula. O bloqueio vale na hora, mesmo para quem já entrou |
 | `RETENCAO_ACESSOS_MESES` | não (padrão: 12) | por quanto tempo a aba *Acessos* guarda os registros |
+| `EMAILS_SEM_LIMITE` | não | e-mails da equipe, separados por vírgula, sem limite por e-mail (para testes). O limite total por hora continua valendo |
+| `EMAILS_PRIORIDADE` | não | quem recebe **cópia** das demandas prioritárias (seção 5), além de `ESCRITORIO_EMAIL`, separado por vírgula |
 | `SEGREDO_PASSE` | **não cadastre** | criado sozinho no primeiro login. Apagar desconecta todo mundo (todos precisam entrar de novo) |
 
 Você também pode preencher os valores na função `configurarPropriedades()`, no arquivo `Config`, e rodá-la uma vez. Mas é mais seguro cadastrar a chave da API direto na tela de propriedades. Se colar a chave no código, volte o valor para `COLE_AQUI` depois de rodar.
@@ -148,6 +150,15 @@ Funções de apoio:
 3. Clique em **Implantar**, autorize se o Google pedir e copie a **URL do app da Web**. Ela termina em `/exec`.
 4. Para conferir, abra a URL no navegador: deve aparecer `{"ok":true}`.
 5. Coloque a URL em [`docs/config.js`](docs/config.js), no campo `webAppUrl`. A URL não é secreta: as proteções ficam no servidor.
+
+### Demandas prioritárias
+
+Uma demanda é **prioritária** quando o valor estimado é *Acima de R$ 5 milhões* (campo do formulário) e/ou quando a IA aponta **caráter estratégico e estruturante**: infraestrutura ou rede de longo prazo, várias unidades ou instituições, impacto em escala no SUS ou em políticas públicas, parcerias relevantes. Nesse caso:
+- o e-mail ao Escritório chega com o assunto **"[Fioconecta] PRIORITÁRIA — …"** e um quadro em destaque com os motivos, pedindo contato com o pesquisador. Quem estiver em `EMAILS_PRIORIDADE` recebe cópia;
+- a cópia ao pesquisador (quando enviada) avisa que o Escritório vai entrar em contato, sem mostrar os motivos internos;
+- a coluna **Prioridade** da aba *Demandas* (criada à direita) registra os motivos.
+
+A avaliação da IA não aparece na página. O valor acima de R$ 5 milhões vale mesmo se a IA falhar.
 
 ### Login e aba *Acessos*
 
@@ -194,7 +205,7 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 | "…formato inesperado (código P1)" | resposta sem resultado, por exemplo quando o envio foi redirecionado ao `doGet` (várias contas Google logadas) | teste numa janela anônima e avise quem desenvolve |
 | "Ocorreu um erro inesperado… (ref. XXXXXXXX)" | erro no servidor | rode `verUltimosErros()` e procure o mesmo código `ref.` |
 | "Não conseguimos gerar as sugestões agora…" | a IA falhou, mas a demanda foi registrada e o Escritório foi avisado | `verUltimosErros()`; confira a chave da API e o saldo |
-| "Você atingiu o limite de 3 envios…" | limite por e-mail em 24 h | em teste, rode `limparLimitesDeTaxa()` |
+| "Você atingiu o limite de 5 envios…" (ou de avaliações, leituras, rascunhos) | limite por e-mail em 24 h | em teste, rode `limparLimitesDeTaxa()` ou coloque o seu e-mail em `EMAILS_SEM_LIMITE` |
 | "Não foi possível ler este arquivo…" (upload) | PDF com senha, digitalizado (só imagem) ou com mais de 100 páginas | salvar como PDF de texto, DOCX ou TXT; ou preencher à mão |
 | "…(código A1)" / "(código A2)" no upload | o navegador não conseguiu abrir o arquivo (ex.: DOCX corrompido ou navegador antigo) | salvar como PDF e tentar de novo |
 | "Não foi possível gerar esta parte da proposta…" | a IA falhou ou demorou demais | tente de novo; se repetir, `verUltimosErros()` |
@@ -216,14 +227,14 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 |---|---|
 | Custo por demanda (28 editais, 43 financiadores) | ~US$ 0,13 (medido em teste real) |
 | Tempo de resposta | 30–60 s |
-| Envios por e-mail (matching com toda a base) | 3 a cada 24 h |
+| Envios por e-mail (matching com toda a base) | 5 a cada 24 h (e-mails em `EMAILS_SEM_LIMITE` não têm limite por e-mail) |
 | Envios no total | 30 por hora |
-| Avaliação de um edital escolhido | ~US$ 0,02–0,04 (só um edital vai para a IA); 10 por e-mail a cada 24 h, 30 por hora; só o Escritório recebe e-mail |
+| Avaliação de um edital escolhido | ~US$ 0,02–0,04 (só um edital vai para a IA); 15 por e-mail a cada 24 h, 30 por hora; só o Escritório recebe e-mail |
 | Códigos de acesso | 5 por e-mail a cada 24 h, 30 por hora; cada código gasta 1 e-mail |
 | Lista de oportunidades | sem custo de IA; 200 acessos por e-mail a cada 24 h |
 | Tamanho do envio | até 20 KB (formulário); arquivo para leitura: até 10 MB |
-| Leitura de arquivo (pré-preenchimento) | ~US$ 0,05–0,20 por arquivo; 5 por e-mail a cada 24 h, 30 por hora |
-| Rascunho de proposta (XLSX) | ~US$ 0,15–0,30 por proposta (2 chamadas de 30–60 s); 5 por e-mail a cada 24 h, 20 por hora |
+| Leitura de arquivo (pré-preenchimento) | ~US$ 0,05–0,20 por arquivo; 8 por e-mail a cada 24 h, 30 por hora |
+| Rascunho de proposta (XLSX) | ~US$ 0,15–0,30 por proposta (2 chamadas de 30–60 s); 8 por e-mail a cada 24 h, 20 por hora |
 | E-mails por dia (conta Gmail gratuita) | ~100 destinatários (cada demanda usa 1 ou 2; cada código de acesso, 1). Com o login, vale migrar para a conta institucional (seção 9), que tem cota maior |
 
 ## 12. Caminho B: clasp (opcional)

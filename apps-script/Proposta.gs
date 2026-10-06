@@ -29,7 +29,7 @@ var LIMITE_TEXTO_PROPOSTA = 700;
 var MENSAGENS_PROPOSTA = {
   dados: 'Não foi possível gerar a proposta: os dados do formulário estão incompletos. Refaça o matching.',
   edital: 'Este edital não está mais disponível na base. Atualize a página e refaça o matching.',
-  limiteEmail: 'Você atingiu o limite de 5 rascunhos de proposta em 24 horas com este e-mail.',
+  limiteEmail: 'Você atingiu o limite de 8 rascunhos de proposta em 24 horas com este e-mail.',
   falha: 'Não foi possível gerar esta parte da proposta agora. Tente novamente em alguns minutos.'
 };
 

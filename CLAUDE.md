@@ -29,7 +29,7 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 - Nome e e-mail do pesquisador nunca vão para a IA.
 - Texto do usuário vai delimitado em `<demanda>`. A saída da IA é validada contra os IDs e organizações enviados, notas limitadas a 0–100 e textos cortados em 400 caracteres.
 - Validação no navegador **e** no servidor (o servidor é a autoridade). Rejeitar campos desconhecidos. Corpo máximo de 20 KB.
-- Anti-abuso: honeypot; Turnstile (desligável por propriedade durante o protótipo); limite de taxa com `LockService` (3 envios por e-mail a cada 24 h, guardados em Propriedades do usuário com a chave = hash SHA-256 do e-mail, porque o `CacheService` só guarda por até 6 h; 30 globais por hora no `CacheService`).
+- Anti-abuso: honeypot; Turnstile (desligável por propriedade durante o protótipo); limite de taxa com `LockService` (5 envios por e-mail a cada 24 h — decisão do Bruno de 06/10/2026, acima dos 3 do briefing; e-mails em `EMAILS_SEM_LIMITE` só têm o limite global; guardados em Propriedades do usuário com a chave = hash SHA-256 do e-mail, porque o `CacheService` só guarda por até 6 h; 30 globais por hora no `CacheService`).
 - Texto do usuário gravado na planilha passa por `protegerCelula()` (evita injeção de fórmulas).
 - Cópia por e-mail ao pesquisador só se o domínio estiver em `DOMINIOS_COPIA` (correspondência exata do domínio).
 - Frontend: texto do servidor só com `textContent`, nunca `innerHTML`. Links só com `http(s)`, `target="_blank"` e `rel="noopener noreferrer"`.
@@ -40,10 +40,11 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 ## Prompt
 - Prompt em `apps-script/Prompt.gs` com `PROMPT_VERSAO`. Mudou o texto, incrementa a versão.
 - Decisão do Bruno (05/10/2026, `matching-v2`), que prevalece sobre a seção 6.1 do briefing: `lacunas_da_demanda` aparece como **"Para fortalecer sua candidatura"** — até 4 ações práticas no imperativo, sem dizer que algo "falta" e sem pedir o que o formulário não pergunta; quando a dica depende de um campo do formulário, cita o campo pelo nome exato.
+- `matching-v3` (06/10/2026): `carater_estrategico` {estrategico, justificativa} no schema. É avaliação interna: nunca vai para a página. `avaliarPrioridade()` (Registro.gs): prioritária se `valorEstimado` = "Acima de R$ 5 milhões" e/ou `estrategico === true` → assunto "PRIORITÁRIA", quadro de destaque e cópia para `EMAILS_PRIORIDADE` no e-mail ao Escritório, aviso de contato (sem motivos) na cópia ao pesquisador, coluna `Prioridade` em Demandas.
 
 ## Fase 2A: leitura de arquivo (`apps-script/Extracao.gs`)
 - `doPost` com `acao: "extrair"`: PDF vai ao Claude como documento base64; DOCX/TXT chegam como texto (o DOCX é lido no navegador, sem biblioteca externa). Corpo até 15 MB só nessa ação; arquivo até 10 MB.
-- Exige autorização própria (`consentimentoArquivo`) e e-mail válido; cota própria (5 por e-mail/24 h, 30/h). Nada do arquivo é gravado; nome e e-mail nunca são extraídos.
+- Exige autorização própria (`consentimentoArquivo`) e e-mail válido; cota própria (8 por e-mail/24 h, 30/h). Nada do arquivo é gravado; nome e e-mail nunca são extraídos.
 - A resposta só **pré-preenche campos vazios**; o pesquisador revisa. `PROMPT_EXTRACAO_VERSAO` segue a mesma regra de versão.
 - Arquivos `.gs` não podem usar, no nível de topo, constantes de outros arquivos (a ordem de carga do Apps Script não é garantida): monte esses valores dentro de funções.
 
@@ -51,14 +52,14 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 - Botão nos cards de oportunidade. O navegador faz 2 requisições `acao: "proposta"` (parte 1: ficha + marco lógico; parte 2: orçamento + Gantt) e monta o XLSX localmente com `docs/xlsx.js` (gerador próprio, sem biblioteca externa). Nada é gravado no servidor.
 - O edital é relido da planilha pelo ID (só ativos e não vedados); duração por `duracaoEmMeses()` (padrão de 24 meses, com aviso, quando o edital não informa). A demanda é validada de novo; nome e e-mail não vão para a IA (entram só no arquivo gerado no navegador).
 - Orçamento: moeda do edital, por ano, rubricas do edital ou modelo padrão; valores são ESTIMATIVAS da IA, sempre marcados como rascunho; totais por fórmula. Texto entra como inline string (nunca fórmula).
-- Cotas: 5 por e-mail/24 h e 20/h, para cada parte. `PROMPT_PROPOSTA_VERSAO` segue a regra de versão.
+- Cotas: 8 por e-mail/24 h e 20/h, para cada parte. `PROMPT_PROPOSTA_VERSAO` segue a regra de versão.
 
 ## Fase 3: login, lista de oportunidades e avaliação de um edital (`apps-script/Acesso.gs`, `apps-script/Catalogo.gs`)
 - Login por código: `acao: "codigo"` envia 6 dígitos ao e-mail (10 min, 5 tentativas; guardado só como hash no `CacheService`); `acao: "entrar"` devolve o passe `email|validade|HMAC-SHA256` (30 dias; segredo `SEGREDO_PASSE`, criado sozinho). `LOGIN_ATIVO` (padrão ligado), `DOMINIOS_LOGIN` (domínio exato ou e-mail completo; padrão `fiocruz.br`), `EMAILS_BLOQUEADOS`.
 - Com login, toda ação (menos `codigo` e `entrar`) exige o passe, e o e-mail que vale é o do passe (`aplicarEmailDaSessao_`). O passe sai dos dados antes da validação.
 - Aba `Acessos` (Data/hora, E-mail, Evento, Detalhe): logins, recusas e cada uso. O código nunca é gravado. Retenção `RETENCAO_ACESSOS_MESES` (padrão 12), limpeza automática após login (no máximo a cada 6 h) e por `limparAcessosAntigos()`. Turnstile e limite de taxa vêm antes de qualquer gravação.
 - Lista (`acao: "oportunidades"`): só candidatos (ativos e não vedados), só colunas públicas, 10 min em cache. Nada passa pela IA.
-- Avaliação de um edital: matching com `idOportunidade`; só esse edital vai para a IA (sem financiadores), com `PROMPT_AVALIACAO_INDIVIDUAL` (`PROMPT_VERSAO_INDIVIDUAL`, mesma regra de versão); o card aparece qualquer que seja a nota. Cota própria (10 por e-mail/24 h, 30/h). Grava em Demandas (coluna `Edital avaliado`, criada à direita) e avisa o Escritório, sem cópia ao pesquisador.
+- Avaliação de um edital: matching com `idOportunidade`; só esse edital vai para a IA (sem financiadores), com `PROMPT_AVALIACAO_INDIVIDUAL` (`PROMPT_VERSAO_INDIVIDUAL`, mesma regra de versão); o card aparece qualquer que seja a nota. Cota própria (15 por e-mail/24 h, 30/h). Grava em Demandas (coluna `Edital avaliado`, criada à direita) e avisa o Escritório, sem cópia ao pesquisador.
 - Página: telas por endereço (`#oportunidades`, `#avaliar`, `#avaliar/<ID>`), passe e última lista no `localStorage` (apagados em *Sair*). A resposta de `entrar` já traz a lista; `entrar` repetido com o mesmo código em até 3 min devolve o mesmo passe. Só `oportunidades` e `entrar` são repetidos às cegas após falha de comunicação. Matching, extração e proposta levam `idPedido` (UUID gerado pela página, só se o servidor anunciar `recursos.idPedido`): o servidor guarda a resposta por 10 min sob o hash de ação + e-mail do passe + idPedido (ou responde `pendente` enquanto processa), e a página repete o mesmo pedido por até 5 min sem nova chamada à IA. Implantar o Apps Script antes de publicar a página.
 - Planilha: cada aba é lida de uma vez (`getDisplayValues` do intervalo todo), mais uma leitura por coluna de data ou de link.
 

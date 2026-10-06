@@ -187,6 +187,12 @@ function listaDeTextos_(v, maxItens) {
     .slice(0, maxItens);
 }
 
+/** Caráter estratégico: só true explícito conta; justificativa só quando true. Ausente → false. */
+function caraterEstrategico_(v) {
+  var estrategico = !!(v && typeof v === 'object' && v.estrategico === true);
+  return { estrategico: estrategico, justificativa: estrategico ? textoCurto_(v.justificativa) : '' };
+}
+
 /**
  * Valida a resposta da IA (seção 6.3).
  * - JSON válido com os campos principais;
@@ -262,6 +268,7 @@ function validarRespostaMatching(texto, idsEnviados, organizacoesEnviadas) {
     dados: {
       resumo_demanda: textoCurto_(bruto.resumo_demanda),
       lacunas_da_demanda: listaDeTextos_(bruto.lacunas_da_demanda, LIMITE_LACUNAS_),
+      carater_estrategico: caraterEstrategico_(bruto.carater_estrategico),
       oportunidades: oportunidades.sort(porNota).slice(0, LIMITE_OPORTUNIDADES_IA_),
       financiadores: financiadores.sort(porNota).slice(0, LIMITE_FINANCIADORES_IA_)
     }

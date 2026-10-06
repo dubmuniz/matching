@@ -15,8 +15,11 @@ var CABECALHO_DEMANDAS = [
   'Data/hora', 'ID demanda', 'Nome', 'E-mail', 'Unidade', 'Título', 'Resumo', 'Problema', 'Objetivos',
   'Áreas', 'Abrangência', 'Maturidade', 'Valor estimado', 'Horizonte', 'Parceiros', 'Idiomas',
   'Resultado (JSON)', 'Top 3 (texto)', 'Versão do prompt', 'Status triagem',
-  'Edital avaliado'   // coluna nova (à direita): preenchida só na avaliação de um edital escolhido
+  'Edital avaliado',  // coluna nova (à direita): preenchida só na avaliação de um edital escolhido
+  'Prioridade'        // coluna nova (à direita): motivos do contato prioritário do Escritório
 ];
+
+var VALOR_PRIORITARIO_ = 'Acima de R$ 5 milhões';
 var STATUS_TRIAGEM_INICIAL = 'Nova';
 var LIMITE_CELULA_ = 49000; // o Sheets aceita até 50.000 caracteres por célula
 
@@ -45,6 +48,23 @@ function escaparHtml(s) {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Demanda prioritária: o Escritório deve procurar o pesquisador para apoiar a submissão.
+ * Motivos: valor estimado acima de R$ 5 milhões (do formulário) e/ou caráter estratégico e
+ * estruturante apontado pela IA.
+ * @param {Object|null} respostaIA  saída de validarRespostaMatching().dados, ou null se a IA falhou
+ * @return {{ prioritaria: boolean, motivos: string[] }}
+ */
+function avaliarPrioridade(demanda, respostaIA) {
+  var motivos = [];
+  if (demanda && demanda.valorEstimado === VALOR_PRIORITARIO_) motivos.push('Valor estimado acima de R$ 5 milhões');
+  var c = respostaIA && respostaIA.carater_estrategico;
+  if (c && c.estrategico === true) {
+    motivos.push('Caráter estratégico e estruturante (avaliação da IA)' + (c.justificativa ? ': ' + c.justificativa : ''));
+  }
+  return { prioritaria: motivos.length > 0, motivos: motivos };
+}
+
 function nomeDaUnidade(demanda) {
   return demanda.unidade === 'Outra' ? ('Outra: ' + demanda.unidadeOutra) : demanda.unidade;
 }
@@ -58,7 +78,7 @@ function gerarIdDemanda(dataAAAAMMDD, aleatorio) {
 /**
  * Valores da linha, na ordem de CABECALHO_DEMANDAS.
  * @param {Object|null} resultado  saída de montarResultado(), ou null se a IA falhou
- * @param {{ versaoPrompt?: string, editalAvaliado?: string }} opcoes
+ * @param {{ versaoPrompt?: string, editalAvaliado?: string, prioridade?: Object }} opcoes
  */
 function montarLinhaDemanda(dataHora, idDemanda, demanda, resultado, erroIA, opcoes) {
   opcoes = opcoes || {};
@@ -83,7 +103,9 @@ function montarLinhaDemanda(dataHora, idDemanda, demanda, resultado, erroIA, opc
     'Top 3 (texto)': resultado ? top3Texto(resultado) : '—',
     'Versão do prompt': opcoes.versaoPrompt || PROMPT_VERSAO,
     'Status triagem': STATUS_TRIAGEM_INICIAL,
-    'Edital avaliado': opcoes.editalAvaliado || ''
+    'Edital avaliado': opcoes.editalAvaliado || '',
+    'Prioridade': (opcoes.prioridade && opcoes.prioridade.prioritaria)
+      ? 'Contato prioritário: ' + opcoes.prioridade.motivos.join('; ') : ''
   };
   return CABECALHO_DEMANDAS.map(function (c) { return protegerCelula(valores[c]); });
 }
@@ -154,15 +176,19 @@ function linhaTabela_(rotulo, valor) {
 
 /**
  * E-mail ao Escritório: dados completos da demanda, 5 melhores cards e link para a planilha.
- * @param {{ editalAvaliado?: string }} opcoes  avaliação de um edital escolhido pelo pesquisador
+ * @param {{ editalAvaliado?: string, prioridade?: Object }} opcoes  avaliação de um edital escolhido;
+ *   prioridade (avaliarPrioridade): assunto e destaque próprios, pedindo contato do Escritório
  */
 function montarEmailEscritorio(demanda, idDemanda, resultado, urlPlanilha, erroIA, opcoes) {
   var avaliado = (opcoes && opcoes.editalAvaliado) || '';
-  var assunto = ((avaliado ? '[Fioconecta] Avaliação de edital: ' : '[Fioconecta] Nova demanda: ') +
+  var prioridade = (opcoes && opcoes.prioridade && opcoes.prioridade.prioritaria) ? opcoes.prioridade : null;
+  var assunto = ((prioridade ? '[Fioconecta] PRIORITÁRIA — ' : '[Fioconecta] ') +
+    (avaliado ? 'Avaliação de edital: ' : (prioridade ? 'Demanda para contato: ' : 'Nova demanda: ')) +
     demanda.titulo + ' — ' + nomeDaUnidade(demanda))
     .replace(/[\r\n]+/g, ' ').slice(0, 250);
   var html = [
     '<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.45;color:#222;max-width:720px">',
+    prioridade ? htmlPrioridade_(prioridade) : '',
     '<h2 style="margin:0 0 8px">' + (avaliado ? 'Avaliação de edital ' : 'Nova demanda ') + escaparHtml(idDemanda) + '</h2>',
     '<table style="border-collapse:collapse">',
     avaliado ? linhaTabela_('Edital avaliado', avaliado) : '',
@@ -190,6 +216,8 @@ function montarEmailEscritorio(demanda, idDemanda, resultado, urlPlanilha, erroI
   ].join('\n');
 
   var texto = [
+    prioridade ? 'DEMANDA PRIORITÁRIA: entre em contato com o pesquisador para apoiar a submissão.\n' +
+      prioridade.motivos.map(function (m) { return '- ' + m; }).join('\n') + '\n' : '',
     (avaliado ? 'Avaliação de edital ' : 'Nova demanda ') + idDemanda,
     avaliado ? 'Edital avaliado: ' + avaliado : '',
     'Nome: ' + demanda.nome,
@@ -206,14 +234,29 @@ function montarEmailEscritorio(demanda, idDemanda, resultado, urlPlanilha, erroI
   return { assunto: assunto, html: html, texto: texto };
 }
 
-/** Cópia ao pesquisador: sem link da planilha e sem dados internos. */
-function montarEmailPesquisador(demanda, idDemanda, resultado) {
+function htmlPrioridade_(prioridade) {
+  return '<div style="border:2px solid #a1001d;background:#fdecee;border-radius:8px;padding:10px 14px;margin:0 0 14px">' +
+    '<p style="margin:0 0 4px;font-weight:bold;color:#a1001d">Demanda prioritária: entre em contato com o pesquisador para apoiar e trabalhar junto na submissão.</p>' +
+    '<ul style="margin:4px 0 0;padding-left:18px">' +
+    prioridade.motivos.map(function (m) { return '<li>' + escaparHtml(m) + '</li>'; }).join('') + '</ul></div>';
+}
+
+var AVISO_CONTATO_PESQUISADOR_ =
+  'Pelas características do seu projeto, o Escritório de Captação vai entrar em contato para apoiar a preparação da submissão.';
+
+/**
+ * Cópia ao pesquisador: sem link da planilha e sem dados internos.
+ * Demanda prioritária: avisa que o Escritório vai procurá-lo (sem os motivos internos).
+ */
+function montarEmailPesquisador(demanda, idDemanda, resultado, prioridade) {
+  var prioritaria = !!(prioridade && prioridade.prioritaria);
   var assunto = ('[Fioconecta] Recebemos sua demanda: ' + demanda.titulo).replace(/[\r\n]+/g, ' ').slice(0, 250);
   var html = [
     '<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.45;color:#222;max-width:720px">',
     '<p>Olá, ' + escaparHtml(demanda.nome) + '.</p>',
     '<p>O Escritório de Captação recebeu sua demanda <strong>' + escaparHtml(demanda.titulo) + '</strong> ' +
       '(protocolo ' + escaparHtml(idDemanda) + ') e entrará em contato.</p>',
+    prioritaria ? '<p><strong>' + escaparHtml(AVISO_CONTATO_PESQUISADOR_) + '</strong></p>' : '',
     resultado ? htmlResultado_(resultado) : '<p>As sugestões automáticas não puderam ser geradas agora; o Escritório fará uma análise manual.</p>',
     '<p style="color:#666;font-size:12px">' + escaparHtml(AVISO_IA_) + '</p>',
     '</div>'
@@ -221,6 +264,7 @@ function montarEmailPesquisador(demanda, idDemanda, resultado) {
   var texto = [
     'Olá, ' + demanda.nome + '.',
     'O Escritório de Captação recebeu sua demanda "' + demanda.titulo + '" (protocolo ' + idDemanda + ') e entrará em contato.',
+    prioritaria ? AVISO_CONTATO_PESQUISADOR_ : '',
     '',
     resultado ? (melhoresCards(resultado, 5).map(textoCard_).join('\n\n') || MENSAGEM_SEM_RESULTADOS) : '',
     '',
@@ -279,20 +323,24 @@ function enviarEmails_(cfg, demanda, idDemanda, resultado, erroIA, opcoes) {
   if (cfg.escritorioEmail) {
     var url = 'https://docs.google.com/spreadsheets/d/' + encodeURIComponent(cfg.spreadsheetId) + '/edit';
     var e1 = montarEmailEscritorio(demanda, idDemanda, resultado, url, erroIA, opcoes);
-    MailApp.sendEmail({
+    var mensagem = {
       to: cfg.escritorioEmail,
       subject: e1.assunto,
       body: e1.texto,
       htmlBody: e1.html,
       name: 'Fioconecta Matching',
       replyTo: demanda.email
-    });
+    };
+    if (opcoes.prioridade && opcoes.prioridade.prioritaria && cfg.emailsPrioridade.length) {
+      mensagem.cc = cfg.emailsPrioridade.join(',');
+    }
+    MailApp.sendEmail(mensagem);
   } else {
     console.error('ESCRITORIO_EMAIL não configurado: e-mail ao Escritório não enviado.');
   }
 
   if (!opcoes.editalAvaliado && dominioPermitidoParaCopia(demanda.email, cfg.dominiosCopia)) {
-    var e2 = montarEmailPesquisador(demanda, idDemanda, resultado);
+    var e2 = montarEmailPesquisador(demanda, idDemanda, resultado, opcoes.prioridade);
     MailApp.sendEmail({
       to: demanda.email,
       subject: e2.assunto,
