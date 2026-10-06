@@ -88,7 +88,12 @@ function processarListaOportunidades_(dados, cfg, sessao) {
 
   var lista = listaDeOportunidades_(cfg);
   registrarAcessoALista_(cfg, sessao.email);
-  return { ok: true, login: cfg.loginAtivo, email: sessao.email, oportunidades: lista };
+  return { ok: true, login: cfg.loginAtivo, email: sessao.email, oportunidades: lista, recursos: recursosDoServidor_() };
+}
+
+/** O que este servidor aceita além do básico (a página só usa o que estiver anunciado aqui). */
+function recursosDoServidor_() {
+  return { idPedido: true };
 }
 
 /** Lista pronta, do cache (10 minutos) ou montada a partir da planilha. Também usada no login. */

@@ -422,6 +422,11 @@
     if (sessao.passe && dados.acao !== 'codigo' && dados.acao !== 'entrar') {
       dados = Object.assign({}, dados, { passe: sessao.passe });
     }
+    // Matching, leitura de arquivo e proposta levam uma identificação do pedido (se o servidor
+    // anunciou o recurso): se a resposta se perder, a página pergunta de novo pelo mesmo pedido.
+    if (recursosDoServidor.idPedido && COM_ID_PEDIDO[dados.acao || 'matching'] && !dados.idPedido) {
+      dados = Object.assign({}, dados, { idPedido: novoIdPedido() });
+    }
     return enviarAoServico(dados).then(function (r) {
       if (r && r.codigo === 'login' && dados.acao !== 'oportunidades') {
         exigirLogin('Sua sessão expirou. Entre novamente: os dados do formulário continuam na página.');
@@ -434,13 +439,40 @@
   // o mesmo passe se o código for repetido em até 3 minutos). Matching, leitura de arquivo e proposta
   // não são repetidos: gastariam cota e duplicariam registros.
   var REPETIVEIS = { oportunidades: true, entrar: true };
+  // Com idPedido, matching, extração e proposta também podem ser repetidos: o servidor devolve o
+  // resultado guardado (ou "pendente", se ainda estiver processando) sem rodar a IA de novo.
+  var COM_ID_PEDIDO = { matching: true, extrair: true, proposta: true };
+  var LIMITE_RECUPERACAO_MS = 5 * 60 * 1000;
+  var recursosDoServidor = {};
+
+  function novoIdPedido() {
+    if (window.crypto && window.crypto.randomUUID) return window.crypto.randomUUID();
+    var b = new Uint8Array(16);
+    window.crypto.getRandomValues(b);
+    return Array.prototype.map.call(b, function (x) { return (x < 16 ? '0' : '') + x.toString(16); }).join('');
+  }
+
+  function esperar(ms) { return new Promise(function (ok) { setTimeout(ok, ms); }); }
+
+  /** Repete o mesmo pedido (mesmo idPedido) enquanto a resposta se perder ou o servidor disser "pendente". */
+  function enviarRecuperavel(dados, inicio) {
+    return umaTentativa(dados).then(function (r) {
+      var recuperar = r._transitorio || r._tempo || r.pendente === true;
+      if (recuperar && Date.now() - inicio < LIMITE_RECUPERACAO_MS) {
+        console.warn('Resposta não recebida (' + (r.pendente ? 'pendente' : 'falha de comunicação') + '); perguntando de novo pelo mesmo pedido.');
+        return esperar(r.pendente ? 5000 : 3000).then(function () { return enviarRecuperavel(dados, inicio); });
+      }
+      return r;
+    });
+  }
 
   function enviarAoServico(dados) {
     if (MODO_MOCK) return respostaMock(MODO_MOCK, dados);
     if (!CONFIG.webAppUrl) {
       return Promise.resolve({ ok: false, erro: 'A página ainda não foi configurada (falta a URL do serviço). Avise o Escritório de Captação.' });
     }
-    return umaTentativa(dados).then(function (r) {
+    var tentativa = dados.idPedido ? enviarRecuperavel(dados, Date.now()) : umaTentativa(dados);
+    return tentativa.then(function (r) {
       if (r._transitorio && REPETIVEIS[dados.acao]) {
         // O Google às vezes devolve 404 ou perde a resposta; uma nova tentativa costuma funcionar.
         console.warn('Falha passageira do serviço; repetindo o pedido "' + dados.acao + '".');
@@ -449,6 +481,7 @@
       return r;
     }).then(function (r) {
       delete r._transitorio;
+      delete r._tempo;
       return r;
     });
   }
@@ -481,6 +514,7 @@
       return {
         ok: false,
         _transitorio: !tempo,
+        _tempo: tempo,
         erro: tempo
           ? 'A análise demorou mais que o esperado. Tente novamente em alguns minutos.'
           : 'Não foi possível falar com o serviço (código R1). Verifique sua conexão e tente novamente.'
@@ -1261,7 +1295,8 @@
   function guardarLista(r) {
     try {
       window.localStorage.setItem(CHAVE_LISTA, JSON.stringify({
-        quando: Date.now(), login: !!r.login, email: r.login ? (r.email || sessao.email) : '', oportunidades: r.oportunidades
+        quando: Date.now(), login: !!r.login, email: r.login ? (r.email || sessao.email) : '', oportunidades: r.oportunidades,
+        recursos: r.recursos || {}
       }));
     } catch (e) { /* sem armazenamento: a lista só não aparece antecipada */ }
   }
@@ -1273,6 +1308,7 @@
   /** Mostra uma lista válida (do servidor ou guardada) e segue para a tela do endereço. */
   function aplicarLista(r, guardada) {
     listaFalhou = false;
+    recursosDoServidor = (r.recursos && typeof r.recursos === 'object') ? r.recursos : {};
     sessao.login = !!r.login;
     if (!r.login) esquecerSessao();
     else if (r.email) sessao.email = r.email;

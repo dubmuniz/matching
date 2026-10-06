@@ -87,4 +87,5 @@ Legenda: ✅ atendido · ⚠️ atendido com risco residual ou com ação penden
 |---|---|---|
 | "Entrar" repetido | ✅ | A resposta fica guardada por 3 min sob o hash do e-mail, com o hash do código: só o código certo a recebe, o passe é conferido de novo, e palpites errados contam (5 apagam a resposta), para não haver palpites ilimitados depois de um login (achado da revisão de segurança, corrigido; teste). |
 | Lista guardada no navegador | ✅ | Só colunas públicas; usada apenas pela mesma pessoa conectada (ou com login desligado); apagada em *Sair* e quando o servidor recusa o passe. |
-| Repetição automática | ✅ | Só lista e "entrar"; matching, extração e proposta nunca são repetidos (evita cota gasta e registros duplicados). |
+| Repetição automática | ✅ | Lista e "entrar" são repetidos uma vez. Matching, extração e proposta só são repetidos com o mesmo idPedido, e o servidor devolve o resultado guardado: sem nova chamada à IA, sem cota gasta e sem demanda duplicada (teste). |
+| Resultado guardado por idPedido | ✅ | Chave = hash(ação + e-mail do passe + idPedido); idPedido é UUID aleatório gerado no navegador (16–64 caracteres, validado). Com login, outra pessoa não recebe o resultado (teste). Guardado só 10 min no `CacheService`; erro inesperado libera o pedido. |

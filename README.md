@@ -190,7 +190,7 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 |---|---|---|
 | "A página ainda não foi configurada" | `webAppUrl` vazio em `docs/config.js` | seção 6, passo 5 |
 | "Não foi possível falar com o serviço (código R1)" | sem internet, URL errada ou implantação desativada | confira a URL abrindo-a no navegador (deve mostrar `{"ok":true}`) |
-| "…formato inesperado (código R2…)" | o Google devolveu uma página no lugar dos dados. Se acontece sempre, a implantação provavelmente não está como **"Qualquer pessoa"**. Se é de vez em quando (HTTP 404), é instabilidade do Google: a lista e o login já repetem o pedido sozinhos; nos outros casos, tente de novo | seção 6, passo 2, com uma nova versão |
+| "…formato inesperado (código R2…)" | o Google devolveu uma página no lugar dos dados. Se acontece sempre, a implantação provavelmente não está como **"Qualquer pessoa"**. Se é de vez em quando (HTTP 404), é instabilidade do Google: a página repete o pedido sozinha. No matching, na leitura de arquivo e na proposta, ela pergunta pelo mesmo pedido e recebe o resultado guardado no servidor por 10 minutos, sem rodar a IA de novo nem duplicar a demanda | seção 6, passo 2, com uma nova versão |
 | "…formato inesperado (código P1)" | resposta sem resultado, por exemplo quando o envio foi redirecionado ao `doGet` (várias contas Google logadas) | teste numa janela anônima e avise quem desenvolve |
 | "Ocorreu um erro inesperado… (ref. XXXXXXXX)" | erro no servidor | rode `verUltimosErros()` e procure o mesmo código `ref.` |
 | "Não conseguimos gerar as sugestões agora…" | a IA falhou, mas a demanda foi registrada e o Escritório foi avisado | `verUltimosErros()`; confira a chave da API e o saldo |

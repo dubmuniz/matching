@@ -26,6 +26,7 @@ var MENSAGENS_ERRO = {
   limiteEmail: 'Você atingiu o limite de 3 envios em 24 horas com este e-mail. Tente novamente amanhã.',
   limiteAvaliacao: 'Você atingiu o limite de 10 avaliações de edital em 24 horas. Tente novamente amanhã.',
   limiteLista: 'Muitos acessos à lista de oportunidades. Tente novamente mais tarde.',
+  pendente: 'Ainda estamos processando o seu pedido.',
   login: 'Sua sessão expirou ou não é válida. Entre novamente com o seu e-mail.',
   edital: 'Este edital não está mais disponível na base. Atualize a lista de oportunidades.',
   limiteGlobal: 'O sistema recebeu muitos envios na última hora. Tente novamente mais tarde.',
@@ -126,6 +127,42 @@ function processarEnvio_(e, opcoesTeste) {
   if (acao === 'oportunidades') return processarListaOportunidades_(dados, cfg, sessao);
   if (sessao.email) aplicarEmailDaSessao_(dados, sessao.email);
 
+  // 3. Pedido identificado: se a resposta se perder no caminho (o Google às vezes devolve 404),
+  //    a página repete o mesmo pedido e recebe o resultado guardado, sem rodar a IA de novo.
+  var idPedido = dados.idPedido;
+  delete dados.idPedido;
+  if (idPedido !== undefined && (typeof idPedido !== 'string' || !/^[A-Za-z0-9-]{16,64}$/.test(idPedido))) return falha_('formato');
+  var chavePedido = idPedido ? PREFIXO_PEDIDO_ + hashTexto_((acao || 'matching') + '|' + sessao.email + '|' + idPedido) : '';
+  var cache = CacheService.getScriptCache();
+  if (chavePedido) {
+    var guardado = cache.get(chavePedido);
+    if (guardado === EM_ANDAMENTO_) return { ok: false, pendente: true, erro: MENSAGENS_ERRO.pendente };
+    if (guardado) {
+      try { return JSON.parse(guardado); } catch (err) { /* processa de novo */ }
+    }
+    cache.put(chavePedido, EM_ANDAMENTO_, VALIDADE_PEDIDO_S);
+  }
+
+  var r;
+  try {
+    r = executarAcao_(acao, dados, cfg);
+  } catch (err) {
+    if (chavePedido) cache.remove(chavePedido);
+    throw err;
+  }
+  if (chavePedido) {
+    var json = JSON.stringify(r);
+    if (tamanhoEmBytes_(json) < 95000) cache.put(chavePedido, json, VALIDADE_PEDIDO_S);
+    else cache.remove(chavePedido);
+  }
+  return r;
+}
+
+var PREFIXO_PEDIDO_ = 'PEDIDO_';
+var EM_ANDAMENTO_ = 'andamento';
+var VALIDADE_PEDIDO_S = 600;
+
+function executarAcao_(acao, dados, cfg) {
   var r;
   if (acao === 'extrair') {
     r = processarExtracao_(dados);

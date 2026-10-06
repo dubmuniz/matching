@@ -396,3 +396,57 @@ test('login: depois de entrar, palpites errados continuam limitados a 5', () => 
   // Depois de 5 palpites errados, nem o código certo devolve o passe guardado.
   assert.match(postar(ctx, { acao: 'entrar', email: 'maria@fiocruz.br', codigo: certo, site: '' }).erro, /expirou/);
 });
+
+// ---------------- pedido identificado (recuperar resposta perdida) ----------------
+
+const ID_PEDIDO = '0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0';
+
+test('pedido repetido com o mesmo idPedido devolve o resultado guardado, sem nova chamada à IA', () => {
+  const abas = montarPlanilha();
+  const { ctx, requisicoes, emails } = criarContexto(abas, [respostaClaude(AVALIACAO_IA)]);
+  const r1 = postar(ctx, envioValido({ idOportunidade: 'LINHA-3', idPedido: ID_PEDIDO }));
+  assert.equal(r1.ok, true, JSON.stringify(r1));
+  const r2 = postar(ctx, envioValido({ idOportunidade: 'LINHA-3', idPedido: ID_PEDIDO }));
+  assert.deepEqual(r2, r1);
+  assert.equal(requisicoes.length, 1);
+  assert.equal(abas.Demandas.matriz.length, 2, 'uma demanda só');
+  assert.equal(emails.length, 1);
+  // Outro idPedido é outro pedido.
+  const r3 = postar(ctx, envioValido({ idOportunidade: 'LINHA-3', idPedido: ID_PEDIDO.replace('0f', 'aa') }));
+  assert.equal(r3.ok, false); // sem resposta simulada da IA: houve nova chamada (com novas tentativas)
+  assert.ok(requisicoes.length > 1);
+});
+
+test('pedido ainda em andamento responde "pendente"; erro inesperado libera o pedido', () => {
+  const { ctx, cache } = criarContexto(montarPlanilha(), [respostaClaude(AVALIACAO_IA)]);
+  const chave = 'PEDIDO_' + ctx.hashTexto_('matching||' + ID_PEDIDO);
+  cache[chave] = 'andamento';
+  const r = postar(ctx, envioValido({ idPedido: ID_PEDIDO }));
+  assert.equal(r.pendente, true);
+  delete cache[chave];
+  // Erro inesperado (planilha sem a aba Oportunidades): o pedido não fica preso em "andamento".
+  const { ctx: c2, cache: k2 } = criarContexto({}, []);
+  const r2 = postar(c2, envioValido({ idPedido: ID_PEDIDO }));
+  assert.equal(r2.ok, false);
+  assert.ok(!Object.keys(k2).some(k => k.startsWith('PEDIDO_')));
+});
+
+test('idPedido malformado é recusado; lista e login anunciam o recurso', () => {
+  const { ctx, emails } = criarContexto(montarPlanilha(), [], LOGIN);
+  const passe = ctx.emitirPasse_('maria@fiocruz.br', Date.now()).passe;
+  for (const id of ['curto', 'x'.repeat(65), 'com espaço aaaaaaaaaaaaaa', 123]) {
+    assert.match(postar(ctx, envioValido({ passe, idPedido: id })).erro, /Não foi possível ler/);
+  }
+  assert.deepEqual(postar(ctx, { acao: 'oportunidades', passe }).recursos, { idPedido: true });
+  assert.deepEqual(entrar(ctx, emails).recursos, { idPedido: true });
+});
+
+test('com login, o resultado guardado é de cada pessoa', () => {
+  const { ctx, requisicoes } = criarContexto(montarPlanilha(), [respostaClaude(AVALIACAO_IA)], LOGIN);
+  const maria = ctx.emitirPasse_('maria@fiocruz.br', Date.now()).passe;
+  const joao = ctx.emitirPasse_('joao@fiocruz.br', Date.now()).passe;
+  assert.equal(postar(ctx, envioValido({ passe: maria, idOportunidade: 'LINHA-3', idPedido: ID_PEDIDO })).ok, true);
+  const outro = postar(ctx, envioValido({ passe: joao, idOportunidade: 'LINHA-3', idPedido: ID_PEDIDO }));
+  assert.equal(outro.ok, false, 'João não recebe o resultado da Maria');
+  assert.ok(requisicoes.length > 1, 'o pedido do João chamou a IA de novo');
+});

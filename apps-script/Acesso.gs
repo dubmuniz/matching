@@ -345,7 +345,7 @@ function processarEntrada_(dados) {
 
 /** Passe + lista de oportunidades. Se a lista falhar, a página a pede em seguida. */
 function respostaDeEntrada_(cfg, email, passe, expira) {
-  var r = { ok: true, passe: passe, email: email, expira: expira, login: true };
+  var r = { ok: true, passe: passe, email: email, expira: expira, login: true, recursos: recursosDoServidor_() };
   try {
     r.oportunidades = listaDeOportunidades_(cfg);
   } catch (err) {
