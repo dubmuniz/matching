@@ -80,10 +80,19 @@
     });
   }
 
+  /** Tamanho da fonte conforme o comprimento do texto, para nada vazar da caixa. */
+  function tamanhoPara(s, faixas) {
+    var n = texto(s).length;
+    for (var i = 0; i < faixas.length; i++) if (n <= faixas[i][0]) return faixas[i][1];
+    return faixas[faixas.length - 1][1];
+  }
+
   function titulo(slide, s, cor, opcoes) {
     opcoes = opcoes || {};
+    var estreito = (opcoes.w || (L - 2 * M)) < 8;
+    var tamanho = opcoes.tamanho || tamanhoPara(s, estreito ? [[34, 32], [60, 26], [999, 22]] : [[50, 32], [80, 28], [999, 24]]);
     slide.addText(texto(s), {
-      x: M, y: opcoes.y || 0.95, w: opcoes.w || (L - 2 * M), h: opcoes.h || 1.0, fontFace: FONTE, fontSize: opcoes.tamanho || 32,
+      x: M, y: opcoes.y || 0.95, w: opcoes.w || (L - 2 * M), h: opcoes.h || 1.1, fontFace: FONTE, fontSize: tamanho,
       bold: true, color: cor, margin: 0, valign: 'top', isTextBox: true, objectName: 'titulo'
     });
   }
@@ -95,10 +104,52 @@
     }, caixa));
   }
 
+  function bytesDeBase64(b64) {
+    if (typeof atob === 'function') {
+      var bin = atob(b64), out = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    }
+    return new Uint8Array(Buffer.from(b64, 'base64'));
+  }
+
+  /**
+   * Largura e altura (pixels) de um JPEG ou PNG, lidas do cabeçalho. null se não reconhecer.
+   * A biblioteca precisa da proporção real para recortar a foto ("cover") sem esticá-la.
+   */
+  function dimensoesDaImagem(bytes) {
+    var b = bytes;
+    if (b.length > 24 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) {
+      var w = ((b[16] << 24) | (b[17] << 16) | (b[18] << 8) | b[19]) >>> 0;
+      var h = ((b[20] << 24) | (b[21] << 16) | (b[22] << 8) | b[23]) >>> 0;
+      return w && h ? { w: w, h: h } : null;
+    }
+    if (b.length > 4 && b[0] === 0xFF && b[1] === 0xD8) {
+      var i = 2;
+      while (i + 9 < b.length) {
+        if (b[i] !== 0xFF) { i++; continue; }
+        var marca = b[i + 1];
+        if (marca === 0xD8 || marca === 0x01 || (marca >= 0xD0 && marca <= 0xD7)) { i += 2; continue; }
+        var tam = (b[i + 2] << 8) | b[i + 3];
+        // SOF0–SOF15, menos DHT (C4), JPG (C8) e DAC (CC)
+        if (marca >= 0xC0 && marca <= 0xCF && marca !== 0xC4 && marca !== 0xC8 && marca !== 0xCC) {
+          var hj = (b[i + 5] << 8) | b[i + 6], wj = (b[i + 7] << 8) | b[i + 8];
+          return wj && hj ? { w: wj, h: hj } : null;
+        }
+        i += 2 + tam;
+      }
+    }
+    return null;
+  }
+
   function foto(slide, img, caixa, corCredito) {
     if (!img) return false;
+    var dim = null;
+    try { dim = dimensoesDaImagem(bytesDeBase64(img.base64)); } catch (e) { dim = null; }
+    // w/h com a proporção real da foto; "sizing" recorta para a caixa, sem esticar nem vazar dela.
+    var proporcao = dim ? dim.h / dim.w : caixa.h / caixa.w;
     slide.addImage({
-      data: img.tipo_mime + ';base64,' + img.base64, x: caixa.x, y: caixa.y, w: caixa.w, h: caixa.h,
+      data: img.tipo_mime + ';base64,' + img.base64, x: caixa.x, y: caixa.y, w: caixa.w, h: caixa.w * proporcao,
       sizing: { type: 'cover', w: caixa.w, h: caixa.h }, altText: img.titulo || '', objectName: 'foto'
     });
     slide.addText(texto(img.credito), {
@@ -156,7 +207,9 @@
       slide.addNotes((n ? n + '\n\n' : '') + t.notaRascunho);
     };
     var unidade = dem.unidade === 'Outra' ? texto(dem.unidadeOutra) : texto(dem.unidade);
-    var nomeAlvo = alvo.tipo === 'financiador' ? texto(alvo.nome) : texto(alvo.financiador || alvo.nome);
+    var nomeAlvoCompleto = alvo.tipo === 'financiador' ? texto(alvo.nome) : texto(alvo.financiador || alvo.nome);
+    // Nos rótulos em maiúsculas, nome curto (cabe em uma linha).
+    var nomeAlvo = nomeAlvoCompleto.length > 40 ? nomeAlvoCompleto.slice(0, 39) + '…' : nomeAlvoCompleto;
 
     var pres = new PptxGenJS();
     pres.layout = 'LAYOUT_WIDE';
@@ -173,7 +226,7 @@
     if (temFotoCapa) foto(capa, imgs[0], { x: 7.9, y: 0, w: L - 7.9, h: A - 0.4 }, COR.cinza);
     rotulo(capa, 'FIOCRUZ · ' + t.exec + ' · ' + nomeAlvo, COR.amarelo, 0.7, larguraTexto);
     capa.addText(texto(s.titulo_capa), {
-      x: M, y: 1.35, w: larguraTexto, h: 2.6, fontFace: FONTE, fontSize: 40, bold: true, color: COR.branco,
+      x: M, y: 1.35, w: larguraTexto, h: 2.6, fontFace: FONTE, fontSize: tamanhoPara(s.titulo_capa, temFotoCapa ? [[45, 40], [75, 34], [999, 28]] : [[70, 40], [999, 34]]), bold: true, color: COR.branco,
       margin: 0, valign: 'top', isTextBox: true, objectName: 'titulo'
     });
     corpo(capa, s.subtitulo_capa, { x: M, y: 4.0, w: larguraTexto, h: 1.1 }, COR.cinza, 20);
@@ -193,7 +246,7 @@
     tese.background = { color: COR.vinho };
     rotulo(tese, t.tese, COR.amarelo, 1.6);
     tese.addText(texto(s.tese), {
-      x: M, y: 2.15, w: L - 2 * M - 1.0, h: 3.2, fontFace: FONTE, fontSize: 34, bold: true, color: COR.branco,
+      x: M, y: 2.15, w: L - 2 * M - 1.0, h: 3.2, fontFace: FONTE, fontSize: tamanhoPara(s.tese, [[130, 34], [999, 28]]), bold: true, color: COR.branco,
       margin: 0, valign: 'top', isTextBox: true, objectName: 'tese'
     });
     nota(tese, 1);
@@ -255,7 +308,7 @@
     ali.addText(alvo.tipo === 'financiador' ? t.alvoFinanciador : t.alvoEdital, {
       x: M + 0.3, y: 2.6, w: 3.7, h: 0.35, fontFace: FONTE, fontSize: 12, bold: true, color: COR.amarelo, charSpacing: 1, margin: 0, isTextBox: true
     });
-    ali.addText(texto(alvo.nome), { x: M + 0.3, y: 3.0, w: 3.7, h: 1.6, fontFace: FONTE, fontSize: 20, bold: true, color: COR.branco, margin: 0, valign: 'top', isTextBox: true });
+    ali.addText(texto(alvo.nome), { x: M + 0.3, y: 3.0, w: 3.7, h: 1.6, fontFace: FONTE, fontSize: tamanhoPara(alvo.nome, [[45, 20], [80, 16], [999, 13]]), bold: true, color: COR.branco, margin: 0, valign: 'top', isTextBox: true });
     var detalheAlvo = [alvo.tipo === 'financiador' ? '' : alvo.financiador, alvo.detalhe].filter(Boolean).join(' · ');
     ali.addText(texto(detalheAlvo), { x: M + 0.3, y: 4.65, w: 3.7, h: 1.4, fontFace: FONTE, fontSize: 13, color: COR.cinza, margin: 0, valign: 'top', isTextBox: true });
     (s.alinhamento.itens || []).forEach(function (c, i) {
@@ -272,12 +325,14 @@
     titulo(esc, s.escala.titulo, COR.texto);
     var destaques = [{ valor: dem.valorEstimado, rotulo: t.valorProjeto }];
     if (alvo.tipo !== 'financiador' && alvo.valores) destaques.push({ valor: alvo.valores, rotulo: t.valoresEdital });
-    destaques.forEach(function (dq, i) {
-      var x = M + i * 4.3;
-      esc.addText(texto(dq.valor), { x: x, y: 2.3, w: 4.0, h: 1.3, fontFace: FONTE, fontSize: texto(dq.valor).length > 22 ? 22 : 34, bold: true, color: COR.vinhoMedio, margin: 0, valign: 'bottom', isTextBox: true });
-      esc.addText(texto(dq.rotulo), { x: x, y: 3.65, w: 4.0, h: 0.4, fontFace: FONTE, fontSize: 13, color: COR.textoSuave, margin: 0, isTextBox: true });
-    });
     var fotoEsc = imgs[2] || null;
+    // Com foto, os números ficam dentro da coluna de texto (7"), sem invadir a foto.
+    var largDestaque = fotoEsc ? 3.3 : 4.0, passoDestaque = largDestaque + 0.4;
+    destaques.forEach(function (dq, i) {
+      var x = M + i * passoDestaque;
+      esc.addText(texto(dq.valor), { x: x, y: 2.3, w: largDestaque, h: 1.3, fontFace: FONTE, fontSize: tamanhoPara(dq.valor, [[16, 34], [26, 24], [999, 18]]), bold: true, color: COR.vinhoMedio, margin: 0, valign: 'bottom', isTextBox: true });
+      esc.addText(texto(dq.rotulo), { x: x, y: 3.65, w: largDestaque, h: 0.4, fontFace: FONTE, fontSize: 13, color: COR.textoSuave, margin: 0, isTextBox: true });
+    });
     corpo(esc, s.escala.texto, { x: M, y: 4.45, w: fotoEsc ? 7.0 : L - 2 * M, h: 2.2 });
     if (fotoEsc) foto(esc, fotoEsc, { x: 8.2, y: 2.3, w: L - 8.2 - M, h: 4.0 });
     nota(esc, 6);
@@ -315,7 +370,7 @@
     (s.proximos_passos.itens || []).forEach(function (p, i) {
       var y = 2.35 + i * 0.95;
       numeroEmCirculo(pres, prox, i + 1, M, y + 0.08, COR.laranja);
-      prox.addText(texto(p), { x: M + 0.75, y: y, w: 7.0, h: 0.8, fontFace: FONTE, fontSize: 16, color: COR.branco, margin: 0, valign: 'middle', isTextBox: true });
+      prox.addText(texto(p), { x: M + 0.75, y: y, w: 7.0, h: 0.8, fontFace: FONTE, fontSize: tamanhoPara(p, [[110, 16], [999, 14]]), color: COR.branco, margin: 0, valign: 'middle', isTextBox: true });
     });
     prox.addShape(pres.ShapeType.roundRect, { x: 9.0, y: 2.35, w: L - 9.0 - M, h: 2.8, rectRadius: 0.1, fill: { color: COR.vinhoEscuro }, line: { color: COR.vinhoEscuro } });
     prox.addText(t.contato, { x: 9.3, y: 2.6, w: L - 9.6 - M, h: 0.35, fontFace: FONTE, fontSize: 12, bold: true, color: COR.amarelo, charSpacing: 1, margin: 0, isTextBox: true });
@@ -331,7 +386,7 @@
     return pres;
   }
 
-  var api = { montar: montar, nomeArquivo: nomeArquivo, IDIOMA_CODIGO: IDIOMA_CODIGO, T: T };
+  var api = { montar: montar, nomeArquivo: nomeArquivo, dimensoesDaImagem: dimensoesDaImagem, IDIOMA_CODIGO: IDIOMA_CODIGO, T: T };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else raiz.ApresentacaoPptx = api;
 })(typeof window !== 'undefined' ? window : this);

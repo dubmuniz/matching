@@ -971,7 +971,7 @@
 
   /** Logo branco da Fiocruz (PNG) em base64, para a capa e o último slide. Falhou: segue sem logo. */
   function logoEmBase64() {
-    return fetch('img/logo-fiocruz-branco.png?v=17', { credentials: 'omit' }).then(function (r) {
+    return fetch('img/logo-fiocruz-branco.png?v=18', { credentials: 'omit' }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.arrayBuffer();
     }).then(function (b) {

@@ -18,7 +18,7 @@
  *   e-mail do "pesquisador". Gasta créditos da API e conta no limite de 3 envios por e-mail/24 h
  *   (use limparLimitesDeTaxa() para zerar durante os testes).
  *
- * testarAcervo(): busca fotos no acervo Fiocruz Imagens (sem custo de IA).
+ * testarAcervo(): candidatos de foto do acervo Fiocruz Imagens e assuntos mais frequentes (sem custo de IA).
  * testarApresentacao(): gera o texto e as fotos da apresentação executiva para o primeiro edital (gasta créditos).
  *
  * testarLogin(): mostra a configuração do login, confere a assinatura do passe, cria a aba Acessos
@@ -93,18 +93,34 @@ function envioValidoDeExemplo_(email) {
 }
 
 /**
- * Busca imagens no acervo Fiocruz Imagens para termos de exemplo e mostra o que viria na apresentação.
- * Não gasta créditos da API do Claude.
+ * Mostra os candidatos de foto do acervo Fiocruz Imagens para a demanda de exemplo e os assuntos
+ * mais frequentes do acervo (para ajustar VOCABULARIO_ACERVO_ em Apresentacao.gs). Sem custo de IA.
  */
 function testarAcervo() {
   var inicio = Date.now();
-  var imagens = buscarImagensAcervo_(['Aedes aegypti', 'Amazônia', 'vigilância em saúde']);
+  var termos = termosDeBuscaFoto(DEMANDA_EXEMPLO_);
+  var candidatos = buscarCandidatosAcervo_(termos);
   var linhas = ['===== TESTE DO ACERVO FIOCRUZ IMAGENS =====',
-    'Tempo: ' + ((Date.now() - inicio) / 1000).toFixed(1) + ' s | imagens: ' + imagens.length];
-  imagens.forEach(function (im) {
-    linhas.push('- ' + im.titulo + ' | ' + im.credito + ' | ' + Math.round(im.base64.length * 0.75 / 1024) + ' KB | ' + im.url_item);
+    'Termos (áreas ' + DEMANDA_EXEMPLO_.areas.join(', ') + '): ' + termos.join(' | '),
+    'Tempo: ' + ((Date.now() - inicio) / 1000).toFixed(1) + ' s | candidatos: ' + candidatos.length];
+  candidatos.forEach(function (d) {
+    linhas.push('- [' + d.pontos + '] ' + d.titulo + ' | assuntos: ' + d.assuntos.slice(0, 6).join(', ') + ' | ' + d.credito);
   });
-  if (!imagens.length) linhas.push('Nenhuma imagem: confira se o acervo está no ar (' + ACERVO_IMAGENS_URL + '/api/items).');
+  if (!candidatos.length) linhas.push('Nenhum candidato: confira se o acervo está no ar (' + ACERVO_IMAGENS_URL + '/api/items).');
+
+  var contagem = {};
+  for (var pagina = 1; pagina <= 3; pagina++) {
+    try {
+      var res = UrlFetchApp.fetch(ACERVO_IMAGENS_URL + '/api/items?per_page=100&page=' + pagina, { muteHttpExceptions: true });
+      if (res.getResponseCode() !== 200) break;
+      JSON.parse(res.getContentText('UTF-8')).forEach(function (item) {
+        valoresOmeka_(item, 'dcterms:subject').forEach(function (a) { contagem[a] = (contagem[a] || 0) + 1; });
+      });
+    } catch (e) { break; }
+  }
+  var frequentes = Object.keys(contagem).sort(function (a, b) { return contagem[b] - contagem[a]; }).slice(0, 80);
+  linhas.push('');
+  linhas.push('Assuntos mais frequentes (amostra de até 300 itens): ' + frequentes.map(function (a) { return a + ' (' + contagem[a] + ')'; }).join(', '));
   linhas.push('===== FIM =====');
   imprimirEmBlocos_(linhas);
 }
@@ -128,7 +144,7 @@ function testarApresentacao() {
   if (r.ok) {
     linhas.push('Capa: ' + r.slides.titulo_capa);
     linhas.push('Tese: ' + r.slides.tese);
-    linhas.push('Termos de imagem: ' + r.slides.termos_imagem.join(', ') + ' | fotos: ' + r.imagens.length);
+    linhas.push('Fotos escolhidas pela IA: ' + r.imagens.length);
     r.imagens.forEach(function (im) { linhas.push('  - ' + im.titulo + ' (' + im.credito + ')'); });
   }
   linhas.push('===== FIM =====');

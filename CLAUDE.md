@@ -65,9 +65,9 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 
 ## Fase 4: apresentação executiva em PPTX (`apps-script/Apresentacao.gs`, `docs/apresentacao.js`, `docs/lib/pptxgen.bundle.js`)
 - Botão nos cards de edital e de financiador. Uma requisição `acao: "apresentacao"` (`alvo` = `{tipo:'oportunidade', id}` ou `{tipo:'financiador', organizacao}`, `idioma` do campo idiomaProposta). O alvo é relido da planilha (só candidatos e organizações não vedadas). Nome e e-mail não vão para a IA.
-- A IA devolve 9 slides de estrutura fixa (schema próprio, `normalizarApresentacao()`), anotações do apresentador e `termos_imagem`. `PROMPT_APRESENTACAO_VERSAO` segue a regra de versão.
-- Fotos do acervo Fiocruz Imagens (Omeka S, `/api/items?fulltext_search=`): só `o:is_public`, só URLs do próprio acervo (`dadosDoItemAcervo`), JPEG/PNG até 1,5 MB, até 3 fotos, crédito "Foto: autor / Fiocruz Imagens" no slide. Falha no acervo → apresentação sem foto, nunca erro.
-- PPTX montado no navegador com PptxGenJS 3.12.0 (MIT, cópia local em `docs/lib/`, sem eval, licença em `LICENCAS.txt`). Visual do modelo do Escritório: Archivo, 16:9, capa #201E1D, tese #6E2623, conteúdo #F3F2F2, destaques #EF7918/#FFC000. Sempre marcado como rascunho.
+- A IA devolve 9 slides de estrutura fixa (schema próprio, `normalizarApresentacao()`), anotações do apresentador e `fotos` (IDs escolhidos entre os candidatos enviados). `PROMPT_APRESENTACAO_VERSAO` segue a regra de versão (hoje `apresentacao-v2`).
+- Fotos do acervo Fiocruz Imagens (Omeka S, `/api/items?fulltext_search=`): buscadas ANTES da IA com `termosDeBuscaFoto()` (vocabulário `VOCABULARIO_ACERVO_` por área temática); só candidatos com termo no título ou nos assuntos (até 14) vão à IA em `<fotos_disponiveis>`; a IA escolhe até 3 ou nenhuma. Só `o:is_public`, só URLs do próprio acervo (`dadosDoItemAcervo`), JPEG/PNG até 1,5 MB, até 3 fotos, crédito "Foto: autor / Fiocruz Imagens" no slide. Falha no acervo → apresentação sem foto, nunca erro.
+- PPTX montado no navegador com PptxGenJS 3.12.0 (MIT, cópia local em `docs/lib/`, sem eval, licença em `LICENCAS.txt`). Visual do modelo do Escritório: Archivo, 16:9, capa #201E1D, tese #6E2623, conteúdo #F3F2F2, destaques #EF7918/#FFC000. Sempre marcado como rascunho. Fotos recortadas na proporção real (`dimensoesDaImagem`) e títulos com tamanho de fonte conforme o comprimento.
 - Resposta com fotos passa de 100 KB: o cache do idPedido guarda a versão sem fotos (`imagens_omitidas`). Cota 8 por e-mail/24 h, 20/h.
 
 ## Testes e fluxo

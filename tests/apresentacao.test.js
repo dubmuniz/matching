@@ -38,7 +38,7 @@ function itemAcervo(id, titulo, assuntos, extra = {}) {
 
 const BUSCA = [
   itemAcervo(1, 'Aedes aegypti', ['mosquito', 'dengue']),
-  itemAcervo(2, 'Paisagem da Amazônia', ['Amazônia', 'rio']),
+  itemAcervo(2, 'Paisagem da Amazônia', ['Amazônia', 'clima']),
   itemAcervo(3, 'Privado', ['dengue'], { 'o:is_public': false }),
   itemAcervo(4, 'Sem relação', ['arquitetura']),
   itemAcervo(5, 'De outro site', ['dengue'], { thumbnail_display_urls: { large: 'https://malicioso.example/x.jpg' } })
@@ -50,12 +50,13 @@ const IMG = { codigo: 200, bytes: JPEG, cabecalhos: { 'Content-Type': 'image/jpe
 test('normalizarApresentacao: limites de tamanho, listas e campos obrigatórios', () => {
   const r = AP.normalizarApresentacao(Object.assign({}, SLIDES_IA, {
     tese: 'x'.repeat(500), proposta: Object.assign({}, SLIDES_IA.proposta, { objetivos: ['a', 'b', 'c', 'd', 'e', ''] }),
-    termos_imagem: ['um', 'dois', 'três', 'quatro'], extra: 'ignorado'
-  }));
+    fotos: ['7', 'inventada', '7', 8, '9', '10'], extra: 'ignorado'
+  }), ['7', '8', '9', '10']);
   assert.equal(r.ok, true);
   assert.equal(r.dados.tese.length, 220);
   assert.deepEqual(r.dados.proposta.objetivos, ['a', 'b', 'c', 'd']);
-  assert.equal(r.dados.termos_imagem.length, 3);
+  assert.deepEqual(r.dados.fotos, ['7', '8', '9'], 'só IDs enviados, sem repetir, até 3');
+  assert.deepEqual(AP.normalizarApresentacao(Object.assign({}, SLIDES_IA, { fotos: ['7'] })).dados.fotos, [], 'sem candidatos, sem fotos');
   assert.ok(!('extra' in r.dados));
   assert.equal(AP.normalizarApresentacao({}).ok, false);
   assert.equal(AP.normalizarApresentacao([]).ok, false);
@@ -82,13 +83,26 @@ test('pontuarItemAcervo: termo inteiro vale mais que palavra solta; acentos não
   assert.equal(p(3), 0);
 });
 
+test('termosDeBuscaFoto: vocabulário das áreas do projeto, alternando entre as áreas', () => {
+  const S = require('../apps-script/Seguranca.gs');
+  for (const area of S.AREAS_TEMATICAS) assert.ok(AP.VOCABULARIO_ACERVO_[area] && AP.VOCABULARIO_ACERVO_[area].length >= 2, area);
+  assert.deepEqual(AP.termosDeBuscaFoto({ areas: ['Arboviroses e vetores', 'Clima e saúde'] }),
+    ['Aedes aegypti', 'mudanças climáticas', 'dengue', 'clima']);
+  assert.equal(AP.termosDeBuscaFoto({ areas: S.AREAS_TEMATICAS.slice(0, 3) }).length, 6);
+  assert.deepEqual(AP.termosDeBuscaFoto({ areas: [] }), ['pesquisa em saúde', 'Fiocruz']);
+});
+
 // ---------------- servidor ----------------
+
+// envioValido() tem as áreas "Arboviroses e vetores" e "Clima e saúde": 4 buscas no acervo antes da IA.
+const BUSCAS_VAZIAS = [{ codigo: 200, corpo: [] }, { codigo: 200, corpo: [] }, { codigo: 200, corpo: [] }];
+function iaEscolhe(fotos) { return respostaClaude(Object.assign({}, SLIDES_IA, { fotos })); }
 
 test('apresentação para um edital: só o edital e a demanda vão para a IA; fotos do acervo com crédito', () => {
   const abas = montarPlanilha();
   const { ctx, requisicoes } = criarContexto(abas, [
-    respostaClaude(SLIDES_IA),
-    { codigo: 200, corpo: BUSCA }, { codigo: 200, corpo: [] }, { codigo: 200, corpo: [] },
+    { codigo: 200, corpo: BUSCA }, ...BUSCAS_VAZIAS,
+    iaEscolhe(['2', '1', '99']),
     IMG, IMG
   ]);
   const r = postar(ctx, pedido({ tipo: 'oportunidade', id: 'OPP-0001' }));
@@ -98,29 +112,36 @@ test('apresentação para um edital: só o edital e a demanda vão para a IA; fo
   assert.equal(r.alvo.valores, 'US$ 1M');
   assert.equal(r.slides.titulo_capa, SLIDES_IA.titulo_capa);
   assert.equal(r.imagens.length, 2);
-  assert.equal(r.imagens[0].credito, 'Foto: Fulano de Tal / Fiocruz Imagens');
+  assert.equal(r.imagens[0].titulo, 'Paisagem da Amazônia', 'na ordem escolhida pela IA');
+  assert.equal(r.imagens[1].credito, 'Foto: Fulano de Tal / Fiocruz Imagens');
   assert.equal(r.imagens[0].base64, JPEG.toString('base64'));
 
-  const ia = requisicoes[0].corpo;
+  const ia = requisicoes[4].corpo;
   const msg = JSON.stringify(ia);
-  assert.match(ia.system, /acervo Fiocruz Imagens/);
+  assert.match(ia.system, /relação CLARA/);
+  // A IA só vê candidatos públicos, do acervo e com termo no título ou nos assuntos.
+  const fotos = JSON.parse(ia.messages[0].content.split('<fotos_disponiveis>\n')[1].split('\n</fotos_disponiveis>')[0]);
+  assert.deepEqual(fotos.map(f => f.id).sort(), ['1', '2']);
   for (const proibido of ['Maria Pesquisadora', 'maria@fiocruz.br', 'SEGREDO-PONTO-FOCAL', 'pessoa@exemplo.org']) {
     assert.ok(!msg.includes(proibido), proibido);
   }
   // Buscas só no acervo; imagens só do acervo (nunca do item de outro domínio).
-  for (const req of requisicoes.slice(1)) assert.ok(req.url.startsWith(ACERVO + '/'), req.url);
-  assert.match(requisicoes[1].url, /\/api\/items\?per_page=12&fulltext_search=Aedes%20aegypti$/);
-  assert.deepEqual(requisicoes.slice(4).map(q => q.url), [`${ACERVO}/files/large/1.jpg`, `${ACERVO}/files/large/2.jpg`]);
+  for (const req of [...requisicoes.slice(0, 4), ...requisicoes.slice(5)]) assert.ok(req.url.startsWith(ACERVO + '/'), req.url);
+  assert.match(requisicoes[0].url, /\/api\/items\?per_page=10&fulltext_search=Aedes%20aegypti$/);
+  assert.match(requisicoes[1].url, /fulltext_search=mudan%C3%A7as%20clim%C3%A1ticas$/);
+  assert.deepEqual(requisicoes.slice(5).map(q => q.url), [`${ACERVO}/files/large/2.jpg`, `${ACERVO}/files/large/1.jpg`]);
 });
 
 test('apresentação para um financiador; vedado ou inexistente não chama a IA', () => {
-  let { ctx, requisicoes } = criarContexto(montarPlanilha(), [respostaClaude(SLIDES_IA), { codigo: 500, corpo: 'x' }, { codigo: 500, corpo: 'x' }, { codigo: 500, corpo: 'x' }]);
+  const fora = { codigo: 500, corpo: 'x' };
+  let { ctx, requisicoes } = criarContexto(montarPlanilha(), [fora, fora, fora, fora, iaEscolhe(['1'])]);
   const r = postar(ctx, pedido({ tipo: 'financiador', organizacao: 'Wellcome Trust' }));
   assert.equal(r.ok, true);
   assert.equal(r.alvo.tipo, 'financiador');
   assert.equal(r.alvo.detalhe, 'UK');
-  assert.deepEqual(r.imagens, [], 'acervo fora do ar: sai sem foto');
-  assert.ok(!JSON.stringify(requisicoes[0].corpo).includes('CONTATO-INTERNO'));
+  assert.deepEqual(r.imagens, [], 'acervo fora do ar: sai sem foto (e a escolha da IA sem candidato é ignorada)');
+  assert.ok(!JSON.stringify(requisicoes[4].corpo).includes('CONTATO-INTERNO'));
+  assert.equal(requisicoes.length, 5);
 
   for (const alvo of [{ tipo: 'financiador', organizacao: 'Vedada Foundation' }, { tipo: 'financiador', organizacao: 'Inexistente' },
     { tipo: 'oportunidade', id: 'LINHA-6' }, { tipo: 'oportunidade', id: 'OPP-9999' }]) {
@@ -150,8 +171,8 @@ test('apresentação: entradas malformadas são recusadas antes da IA', () => {
 test('apresentação: imagem com tipo errado é ignorada; resposta grande é guardada sem fotos', () => {
   const grande = { codigo: 200, bytes: Buffer.alloc(80000, 1), cabecalhos: { 'Content-Type': 'image/jpeg' } };
   const { ctx, cache } = criarContexto(montarPlanilha(), [
-    respostaClaude(SLIDES_IA),
-    { codigo: 200, corpo: BUSCA }, { codigo: 200, corpo: [] }, { codigo: 200, corpo: [] },
+    { codigo: 200, corpo: BUSCA }, ...BUSCAS_VAZIAS,
+    iaEscolhe(['1', '2']),
     { codigo: 200, corpo: '<html>', cabecalhos: { 'Content-Type': 'text/html' } }, grande
   ]);
   const r = postar(ctx, pedido({ tipo: 'oportunidade', id: 'OPP-0001' }, { idPedido: '0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0' }));
@@ -165,7 +186,7 @@ test('apresentação: imagem com tipo errado é ignorada; resposta grande é gua
 
 test('apresentação: limite de 8 por e-mail em 24 h', () => {
   const respostas = [];
-  for (let i = 0; i < 8; i++) respostas.push(respostaClaude(SLIDES_IA), { codigo: 500, corpo: '' }, { codigo: 500, corpo: '' }, { codigo: 500, corpo: '' });
+  for (let i = 0; i < 8; i++) respostas.push({ codigo: 500, corpo: '' }, { codigo: 500, corpo: '' }, { codigo: 500, corpo: '' }, { codigo: 500, corpo: '' }, respostaClaude(SLIDES_IA));
   const { ctx } = criarContexto(montarPlanilha(), respostas);
   for (let i = 0; i < 8; i++) assert.equal(postar(ctx, pedido({ tipo: 'oportunidade', id: 'OPP-0001' })).ok, true, 'apresentação ' + (i + 1));
   assert.match(postar(ctx, pedido({ tipo: 'oportunidade', id: 'OPP-0001' })).erro, /limite de 8 apresentações/);
@@ -173,7 +194,7 @@ test('apresentação: limite de 8 por e-mail em 24 h', () => {
 
 test('apresentação com login: e-mail do passe e registro em Acessos', () => {
   const abas = montarPlanilha();
-  const { ctx } = criarContexto(abas, [respostaClaude(SLIDES_IA), { codigo: 500, corpo: '' }, { codigo: 500, corpo: '' }, { codigo: 500, corpo: '' }],
+  const { ctx } = criarContexto(abas, [...BUSCAS_VAZIAS, { codigo: 200, corpo: [] }, respostaClaude(SLIDES_IA)],
     { props: { LOGIN_ATIVO: 'sim' } });
   assert.equal(postar(ctx, pedido({ tipo: 'oportunidade', id: 'OPP-0001' })).codigo, 'login');
   const passe = ctx.emitirPasse_('maria@fiocruz.br', Date.now()).passe;
@@ -226,7 +247,7 @@ test('montar(): 9 slides com anotações e fotos; nome de arquivo seguro', async
 });
 
 test('mock da apresentação segue o formato do servidor', () => {
-  const n = AP.normalizarApresentacao(MOCK.slides);
+  const n = AP.normalizarApresentacao(MOCK.slides, []);
   assert.equal(n.ok, true);
   assert.deepEqual(Object.keys(MOCK.slides).sort(), Object.keys(n.dados).sort());
   assert.deepEqual(Object.keys(MOCK).sort(), ['alvo', 'idioma', 'imagens', 'ok', 'slides', 'versao']);
@@ -241,9 +262,23 @@ test('index.html carrega a biblioteca e o montador antes do app.js', () => {
   assert.ok(!/\beval\(|new Function\(/.test(lib), 'a política de segurança da página não permite eval');
 });
 
-test('testarAcervo() (editor) mostra as imagens encontradas', () => {
-  const { ctx, logs } = criarContexto(montarPlanilha(), [{ codigo: 200, corpo: BUSCA }, { codigo: 200, corpo: [] }, { codigo: 200, corpo: [] }, IMG, IMG]);
+test('testarAcervo() (editor) mostra candidatos e assuntos frequentes', () => {
+  // DEMANDA_EXEMPLO_ tem 3 áreas → 6 buscas; depois, 3 páginas da amostra de assuntos.
+  const { ctx, logs } = criarContexto(montarPlanilha(), [{ codigo: 200, corpo: BUSCA }, ...BUSCAS_VAZIAS, ...BUSCAS_VAZIAS.slice(0, 2),
+    { codigo: 200, corpo: BUSCA }, { codigo: 404, corpo: '' }]);
   ctx.testarAcervo();
-  assert.match(logs.join('\n'), /imagens: 2/);
-  assert.match(logs.join('\n'), /Aedes aegypti \| Foto: Fulano de Tal \/ Fiocruz Imagens/);
+  const log = logs.join('\n');
+  assert.match(log, /Termos \(áreas Arboviroses e vetores, Clima e saúde, Vigilância em saúde\): Aedes aegypti \| mudanças climáticas \| vigilância em saúde/);
+  assert.match(log, /candidatos: 2/);
+  assert.match(log, /Assuntos mais frequentes.*dengue \(3\)/);
+});
+
+test('dimensoesDaImagem: lê largura e altura de PNG e JPEG (para recortar a foto sem esticar)', () => {
+  const A = require('../docs/apresentacao.js');
+  const png = fs.readFileSync(path.join(DOCS, 'img', 'logo-fiocruz-branco.png'));
+  assert.deepEqual(A.dimensoesDaImagem(png), { w: 600, h: 169 });
+  // JPEG mínimo: SOI, APP0 curto, SOF0 com altura 300 e largura 500.
+  const jpeg = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x04, 0x00, 0x00, 0xFF, 0xC0, 0x00, 0x11, 0x08, 0x01, 0x2C, 0x01, 0xF4, 0x03, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  assert.deepEqual(A.dimensoesDaImagem(jpeg), { w: 500, h: 300 });
+  assert.equal(A.dimensoesDaImagem(Buffer.from('não é imagem')), null);
 });

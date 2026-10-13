@@ -136,7 +136,7 @@ No topo do editor, escolha a função e clique em **Executar**. O resultado apar
 | 6 | `testarEnvioCompleto` | ~US$ 0,13 | envio real: grava em *Demandas* e manda os e-mails para `ESCRITORIO_EMAIL` |
 | 7 | `testarProposta` | ~US$ 0,15–0,30 | gera as duas partes do rascunho de proposta para o primeiro edital; mostra tempo e resumo |
 | 8 | `testarLogin` | grátis | mostra a configuração do login, confere o passe, cria a aba *Acessos* e envia um código para `ESCRITORIO_EMAIL`. **Confira se o e-mail chegou** (e se não caiu no spam) antes de ligar o login para todos |
-| 9 | `testarAcervo` | grátis | busca fotos no acervo Fiocruz Imagens para termos de exemplo; mostra título, crédito e tamanho |
+| 9 | `testarAcervo` | grátis | mostra as fotos candidatas do acervo Fiocruz Imagens para a demanda de exemplo e os assuntos mais frequentes do acervo (para ajustar o vocabulário) |
 | 10 | `testarApresentacao` | ~US$ 0,05–0,10 | gera o texto e as fotos da apresentação executiva para o primeiro edital (o .pptx só é montado na página) |
 
 `testarValidacao` e `testarEnvioCompleto` pulam o login.
@@ -160,7 +160,7 @@ Nos cards de **edital** e de **financiador** do resultado há o botão **Gerar a
 - uma chamada à IA escreve 9 slides (capa, tese, problema, proposta, resultados, por que este financiador, escala e investimento, parcerias e cronograma, próximos passos), com anotações do apresentador, no idioma escolhido no formulário;
 - os fatos do edital ou do financiador vêm da planilha; nome e e-mail do pesquisador entram só no arquivo, montado no navegador;
 - o visual segue o modelo do Escritório (fonte **Archivo**, capa quase preta, tese em vinho, conteúdo em cinza-claro, destaques em laranja e amarelo). Quem não tiver a fonte Archivo instalada (gratuita, Google Fonts) vê a fonte substituta do PowerPoint;
-- as fotos vêm do acervo **Fiocruz Imagens** (API pública): a IA sugere termos de busca, o servidor escolhe itens públicos com assuntos parecidos e cada foto leva o crédito no slide. Sem foto adequada, a apresentação sai sem foto;
+- as fotos vêm do acervo **Fiocruz Imagens** (API pública): antes da IA, o servidor busca no acervo com termos do vocabulário da Fiocruz ligado às **áreas temáticas** do projeto (lista `VOCABULARIO_ACERVO_` em `Apresentacao.gs`) e guarda só fotos cujo título ou assuntos citam esses termos. A IA então escolhe até 3 fotos com relação clara com o projeto, ou nenhuma. Cada foto leva o crédito no slide e é recortada na proporção certa. Para ajustar o vocabulário, rode `testarAcervo`: ele lista os assuntos mais frequentes do acervo;
 - é um **rascunho**: a capa e as anotações dizem isso. A biblioteca usada para montar o arquivo é o PptxGenJS (MIT), copiada em `docs/lib/`.
 
 ### Demandas prioritárias
