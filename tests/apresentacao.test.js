@@ -109,8 +109,10 @@ test('schema da apresentação: layouts e ícones em listas fechadas, iguais às
   assert.deepEqual(schema.properties.problema.properties.layout.enum, ['numero', 'pontos', 'texto']);
   assert.deepEqual(schema.properties.proposta.properties.layout.enum, ['grade', 'colunas', 'lista']);
   assert.deepEqual(schema.properties.resultados.properties.layout.enum, ['cartoes', 'numeros']);
-  const icone = schema.properties.proposta.properties.objetivos.items.properties.icone.enum;
-  assert.deepEqual(icone, [''].concat(AP.ICONES_APRESENTACAO));
+  assert.equal(schema.properties.proposta.properties.objetivos.items.properties.icone.type, 'string');
+  assert.ok(!JSON.stringify(schema).includes('"comunicacao"'), 'lista de ícones fora do schema (complexidade)');
+  const prompt = ctx.systemPromptApresentacao_('Português', 'oportunidade');
+  for (const k of AP.ICONES_APRESENTACAO) assert.ok(prompt.includes(k), 'ícone no prompt: ' + k);
   const A = require('../docs/apresentacao.js');
   assert.deepEqual(A.ICONES, AP.ICONES_APRESENTACAO);
   for (const k of A.ICONES) assert.ok(fs.existsSync(path.join(DOCS, 'img', 'icones', k + '.png')), k);
@@ -380,4 +382,14 @@ test('montar(): textos cortados vão inteiros para as anotações; resposta no f
   const p2 = A.montar(PptxGenJS, { idioma: 'Português', demanda: demanda(), alvo: MOCK.alvo, slides: antigo, imagens: [] });
   assert.ok((await p2.write({ outputType: 'uint8array' })).length > 1000);
   assert.deepEqual(A.iconesUsados({ proposta: { objetivos: [{ icone: '../segredo', texto: 'x' }] } }), ['parceria', 'saude'], 'só chaves do catálogo');
+});
+
+test('apresentação: API recusa o schema (HTTP 400) → repete sem saída estruturada', () => {
+  const { ctx, requisicoes } = criarContexto(montarPlanilha(), [...BUSCAS_VAZIAS, { codigo: 200, corpo: [] },
+    { codigo: 400, corpo: { type: 'error', error: { type: 'invalid_request_error', message: 'Schema is too complex' } } },
+    respostaClaude(SLIDES_IA)]);
+  const r = postar(ctx, pedido({ tipo: 'oportunidade', id: 'OPP-0001' }));
+  assert.equal(r.ok, true, JSON.stringify(r).slice(0, 200));
+  assert.ok(requisicoes[4].corpo.output_config.format, '1ª chamada com schema');
+  assert.ok(!requisicoes[5].corpo.output_config.format, '2ª chamada sem schema');
 });
