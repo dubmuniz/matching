@@ -161,7 +161,9 @@ Nos cards de **edital** e de **financiador** do resultado há o botão **Gerar a
 - os fatos do edital ou do financiador vêm da planilha; nome e e-mail do pesquisador entram só no arquivo, montado no navegador;
 - o visual segue o modelo do Escritório (fonte **Archivo**, capa quase preta, tese em vinho, conteúdo em cinza-claro, destaques em laranja e amarelo). Quem não tiver a fonte Archivo instalada (gratuita, Google Fonts) vê a fonte substituta do PowerPoint;
 - as fotos vêm do acervo **Fiocruz Imagens** (API pública): antes da IA, o servidor busca no acervo com termos do vocabulário da Fiocruz ligado às **áreas temáticas** do projeto (lista `VOCABULARIO_ACERVO_` em `Apresentacao.gs`) e guarda só fotos cujo título ou assuntos citam esses termos. A IA então escolhe até 3 fotos com relação clara com o projeto, ou nenhuma. Cada foto leva o crédito no slide e é recortada na proporção certa. Para ajustar o vocabulário, rode `testarAcervo`: ele lista os assuntos mais frequentes do acervo;
-- é um **rascunho**: a capa e as anotações dizem isso. A biblioteca usada para montar o arquivo é o PptxGenJS (MIT), copiada em `docs/lib/`.
+- a IA escolhe o **layout** de alguns slides conforme o conteúdo (problema com número em destaque, pontos ou texto; objetivos em grade, colunas ou lista; resultados em cartões ou números) e um **ícone** por item, de uma lista fechada de 28 ícones (`docs/img/icones/`, Lucide, licença ISC). Números em destaque só aparecem se estiverem escritos no formulário;
+- os textos são medidos e ajustados a cada caixa: a fonte é a maior que cabe, igual entre cartões do mesmo slide. Texto longo demais (por exemplo, valores do edital com várias faixas) é cortado com "…" e aparece inteiro nas anotações do slide;
+- é um **rascunho**: a capa, o rodapé e as anotações dizem isso. A biblioteca usada para montar o arquivo é o PptxGenJS (MIT), copiada em `docs/lib/`.
 
 ### Demandas prioritárias
 

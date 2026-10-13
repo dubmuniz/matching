@@ -1,6 +1,6 @@
 {
   "ok": true,
-  "versao": "apresentacao-v1",
+  "versao": "apresentacao-v3",
   "idioma": "Português",
   "alvo": {
     "tipo": "oportunidade",
@@ -15,35 +15,99 @@
     "subtitulo_capa": "Vigilância integrada de saúde e clima para 10 municípios do Amazonas",
     "tese": "Integrar dados de saúde e clima permite agir semanas antes dos surtos, onde a vigilância hoje chega tarde",
     "problema": {
+      "layout": "numero",
       "titulo": "Os surtos são detectados tarde demais",
       "texto": "Notificações, dados entomológicos e climáticos estão dispersos, e os municípios têm pouca capacidade de análise. A resposta começa quando o surto já se espalhou.",
-      "destaque_numero": "10",
-      "destaque_rotulo": "municípios do Amazonas na primeira fase, incluindo áreas ribeirinhas e de fronteira"
+      "numero": "10",
+      "unidade": "municípios",
+      "rotulo_numero": "do Amazonas na primeira fase, incluindo áreas ribeirinhas e de fronteira",
+      "pontos": [
+        {
+          "icone": "dados",
+          "texto": "Dados de saúde e clima dispersos em sistemas diferentes"
+        },
+        {
+          "icone": "territorio",
+          "texto": "Pouca capacidade de análise nos municípios"
+        },
+        {
+          "icone": "prazo",
+          "texto": "Resposta começa quando o surto já se espalhou"
+        }
+      ]
     },
     "proposta": {
+      "layout": "grade",
       "titulo": "Um sistema de alerta precoce para as secretarias",
       "texto": "Painéis que combinam notificações do SUS, vigilância entomológica e dados de chuva, temperatura e nível dos rios.",
       "objetivos": [
-        "Integrar bases de dados de saúde e clima",
-        "Desenvolver e validar modelos de alerta precoce",
-        "Implantar painéis em 10 municípios",
-        "Capacitar 60 profissionais das vigilâncias municipais"
+        {
+          "icone": "dados",
+          "titulo": "Integrar as bases",
+          "texto": "Unir dados de saúde e clima em uma só plataforma."
+        },
+        {
+          "icone": "pesquisa",
+          "titulo": "Modelos de alerta",
+          "texto": "Desenvolver e validar modelos de alerta precoce."
+        },
+        {
+          "icone": "territorio",
+          "titulo": "Painéis municipais",
+          "texto": "Implantar os painéis em 10 municípios."
+        },
+        {
+          "icone": "educacao",
+          "titulo": "Formação local",
+          "texto": "Capacitar 60 profissionais das vigilâncias municipais."
+        }
       ]
     },
     "resultados": {
+      "layout": "cartoes",
       "titulo": "O que muda ao fim do projeto",
       "itens": [
-        { "rotulo": "Antecipação", "texto": "Alertas semanas antes do pico de casos, com metas a definir pela equipe." },
-        { "rotulo": "Capacidade local", "texto": "Equipes municipais usando os painéis de forma contínua." },
-        { "rotulo": "Evidência", "texto": "Modelos validados com séries históricas, prontos para ampliar." }
+        {
+          "icone": "prazo",
+          "numero": "",
+          "unidade": "",
+          "rotulo": "Antecipação",
+          "texto": "Alertas semanas antes do pico de casos, com metas a definir pela equipe."
+        },
+        {
+          "icone": "comunidade",
+          "numero": "",
+          "unidade": "",
+          "rotulo": "Capacidade local",
+          "texto": "Equipes municipais usando os painéis de forma contínua."
+        },
+        {
+          "icone": "resultado",
+          "numero": "",
+          "unidade": "",
+          "rotulo": "Evidência",
+          "texto": "Modelos validados com séries históricas, prontos para ampliar."
+        }
       ]
     },
     "alinhamento": {
       "titulo": "Clima e saúde no centro da chamada",
       "itens": [
-        { "rotulo": "Tema", "texto": "A chamada prioriza sistemas de alerta que unem clima e saúde em países de renda média." },
-        { "rotulo": "Porte", "texto": "O valor estimado cabe na faixa de apoio da chamada." },
-        { "rotulo": "Execução", "texto": "Parceria com secretarias garante uso real das ferramentas." }
+        {
+          "icone": "clima",
+          "rotulo": "Tema",
+          "texto": "A chamada prioriza sistemas de alerta que unem clima e saúde em países de renda média."
+        },
+        {
+          "icone": "recursos",
+          "rotulo": "Porte",
+          "texto": "O valor estimado cabe na faixa de apoio da chamada."
+        },
+        {
+          "icone": "parceria",
+          "rotulo": "Execução",
+          "texto": "Parceria com secretarias garante uso real das ferramentas."
+        }
       ]
     },
     "escala": {
@@ -52,21 +116,44 @@
     },
     "parcerias_cronograma": {
       "titulo": "Quem faz e quando",
-      "parcerias": ["ILMD – Fiocruz Amazônia", "Secretarias municipais de saúde", "London School of Hygiene & Tropical Medicine (colaboração em modelagem)"],
+      "parcerias": [
+        "ILMD – Fiocruz Amazônia",
+        "Secretarias municipais de saúde",
+        "London School of Hygiene & Tropical Medicine (colaboração em modelagem)"
+      ],
       "etapas": [
-        { "periodo": "Meses 1–6", "texto": "Integração das bases e acordos de dados" },
-        { "periodo": "Meses 7–12", "texto": "Modelos de alerta e validação" },
-        { "periodo": "Meses 13–24", "texto": "Painéis em 10 municípios e formação" }
+        {
+          "periodo": "Meses 1–6",
+          "texto": "Integração das bases e acordos de dados"
+        },
+        {
+          "periodo": "Meses 7–12",
+          "texto": "Modelos de alerta e validação"
+        },
+        {
+          "periodo": "Meses 13–24",
+          "texto": "Painéis em 10 municípios e formação"
+        }
       ]
     },
     "proximos_passos": {
       "titulo": "Como avançamos juntos",
-      "itens": ["Conversa inicial com a equipe do financiador", "Envio da nota conceitual", "Definição do orçamento detalhado e das metas"]
+      "itens": [
+        "Conversa inicial com a equipe do financiador",
+        "Envio da nota conceitual",
+        "Definição do orçamento detalhado e das metas"
+      ]
     },
     "notas": [
-      "Apresente o projeto e o nome da unidade.", "Leia a tese com calma; é a mensagem principal.", "Explique por que a detecção é tardia.",
-      "Mostre os quatro objetivos.", "Destaque o que muda para os municípios.", "Mostre o alinhamento com a chamada.",
-      "Comente a faixa de investimento.", "Apresente os parceiros e as etapas.", "Proponha o próximo passo concreto."
+      "Apresente o projeto e o nome da unidade.",
+      "Leia a tese com calma; é a mensagem principal.",
+      "Explique por que a detecção é tardia.",
+      "Mostre os quatro objetivos.",
+      "Destaque o que muda para os municípios.",
+      "Mostre o alinhamento com a chamada.",
+      "Comente a faixa de investimento.",
+      "Apresente os parceiros e as etapas.",
+      "Proponha o próximo passo concreto."
     ],
     "fotos": []
   },

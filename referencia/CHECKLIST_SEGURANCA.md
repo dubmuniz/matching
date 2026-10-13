@@ -110,3 +110,6 @@ Legenda: ✅ atendido · ⚠️ atendido com risco residual ou com ação penden
 | Biblioteca de terceiros | ✅ | PptxGenJS 3.12.0 (MIT) copiada localmente (sem CDN, compatível com a CSP `script-src 'self'`); teste confere ausência de `eval`/`new Function`. |
 | XSS | ✅ | `app.js` só usa `textContent`; o .pptx é texto puro (PptxGenJS escapa o XML). |
 | Abuso / custo | ✅ | Cota própria (8 por e-mail/24 h, 20/h), honeypot, Turnstile e login. |
+| Layouts e ícones da IA (v3, 13/10/2026) | ✅ | `layout` e `icone` em enums no schema e conferidos de novo em `normalizarApresentacao()`; a página só baixa ícones cujas chaves estão no catálogo (`iconesUsados` + `ICONES`), sempre do próprio site (`connect-src 'self'`). Teste com `../segredo`. |
+| Números inventados | ✅ | `numeroComprovado_`: número em destaque (e números na unidade) precisa estar escrito na demanda; senão é descartado e o layout muda. |
+| Ícones de terceiros | ✅ | Lucide 0.460.0 (ISC), convertidos para PNG; licença em `docs/lib/LICENCAS.txt`. |

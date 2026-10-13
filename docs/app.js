@@ -969,16 +969,30 @@
     }).then(function (r) { reiniciarTurnstile(); return r; });
   }
 
-  /** Logo branco da Fiocruz (PNG) em base64, para a capa e o último slide. Falhou: segue sem logo. */
-  function logoEmBase64() {
-    return fetch('img/logo-fiocruz-branco.png?v=18', { credentials: 'omit' }).then(function (r) {
+  /** Arquivo da própria página em base64 (logo e ícones). Falhou: devolve '' e a apresentação segue sem ele. */
+  function arquivoEmBase64(caminho) {
+    return fetch(caminho, { credentials: 'omit' }).then(function (r) {
       if (!r.ok) throw new Error('HTTP ' + r.status);
       return r.arrayBuffer();
     }).then(function (b) {
       var bytes = new Uint8Array(b), bin = '';
       for (var i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
       return window.btoa(bin);
-    }).catch(function (e) { console.warn('Logo indisponível para a apresentação:', e); return ''; });
+    }).catch(function (e) { console.warn('Imagem indisponível para a apresentação (' + caminho + '):', e); return ''; });
+  }
+
+  /** Logo branco da Fiocruz e os ícones que os slides usam (só chaves do catálogo fechado). */
+  function imagensDaApresentacao(slides) {
+    var chaves = window.ApresentacaoPptx.iconesUsados(slides).filter(function (k) {
+      return window.ApresentacaoPptx.ICONES.indexOf(k) >= 0;
+    });
+    return Promise.all([arquivoEmBase64('img/logo-fiocruz-branco.png?v=19')].concat(chaves.map(function (k) {
+      return arquivoEmBase64('img/icones/' + k + '.png?v=19');
+    }))).then(function (lista) {
+      var icones = {};
+      chaves.forEach(function (k, i) { if (lista[i + 1]) icones[k] = lista[i + 1]; });
+      return { logo: lista[0], icones: icones };
+    });
   }
 
   function gerarApresentacao(alvo, estado) {
@@ -1001,11 +1015,11 @@
         throw { mensagem: (r && r.erro) || 'Não foi possível gerar a apresentação.' };
       }
       resposta = r;
-      return logoEmBase64();
-    }).then(function (logo) {
+      return imagensDaApresentacao(r.slides);
+    }).then(function (extras) {
       var pres = window.ApresentacaoPptx.montar(window.PptxGenJS, {
         idioma: resposta.idioma || idioma, demanda: ultimaDemanda, alvo: resposta.alvo,
-        slides: resposta.slides, imagens: resposta.imagens || [], logo: logo
+        slides: resposta.slides, imagens: resposta.imagens || [], logo: extras.logo, icones: extras.icones
       });
       return pres.write({ outputType: 'uint8array' });
     }).then(function (bytes) {

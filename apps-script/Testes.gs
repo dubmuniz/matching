@@ -144,6 +144,8 @@ function testarApresentacao() {
   if (r.ok) {
     linhas.push('Capa: ' + r.slides.titulo_capa);
     linhas.push('Tese: ' + r.slides.tese);
+    linhas.push('Layouts escolhidos: problema ' + r.slides.problema.layout + ' | proposta ' + r.slides.proposta.layout +
+      ' | resultados ' + r.slides.resultados.layout + (r.slides.problema.numero ? ' (número: ' + r.slides.problema.numero + ' ' + r.slides.problema.unidade + ')' : ''));
     linhas.push('Fotos escolhidas pela IA: ' + r.imagens.length);
     r.imagens.forEach(function (im) { linhas.push('  - ' + im.titulo + ' (' + im.credito + ')'); });
   }
