@@ -1,0 +1,74 @@
+{
+  "ok": true,
+  "versao": "apresentacao-v1",
+  "idioma": "Português",
+  "alvo": {
+    "tipo": "oportunidade",
+    "nome": "Chamada contínua de clima e saúde (exemplo)",
+    "financiador": "Financiador Exemplo A",
+    "valores": "US$ 500.000 a US$ 2.000.000",
+    "detalhe": "Fluxo contínuo · US$ 500.000 a US$ 2.000.000 · 24 a 36 meses",
+    "link": "https://example.org/edital"
+  },
+  "slides": {
+    "titulo_capa": "Alertas precoces de arboviroses na Amazônia (EXEMPLO)",
+    "subtitulo_capa": "Vigilância integrada de saúde e clima para 10 municípios do Amazonas",
+    "tese": "Integrar dados de saúde e clima permite agir semanas antes dos surtos, onde a vigilância hoje chega tarde",
+    "problema": {
+      "titulo": "Os surtos são detectados tarde demais",
+      "texto": "Notificações, dados entomológicos e climáticos estão dispersos, e os municípios têm pouca capacidade de análise. A resposta começa quando o surto já se espalhou.",
+      "destaque_numero": "10",
+      "destaque_rotulo": "municípios do Amazonas na primeira fase, incluindo áreas ribeirinhas e de fronteira"
+    },
+    "proposta": {
+      "titulo": "Um sistema de alerta precoce para as secretarias",
+      "texto": "Painéis que combinam notificações do SUS, vigilância entomológica e dados de chuva, temperatura e nível dos rios.",
+      "objetivos": [
+        "Integrar bases de dados de saúde e clima",
+        "Desenvolver e validar modelos de alerta precoce",
+        "Implantar painéis em 10 municípios",
+        "Capacitar 60 profissionais das vigilâncias municipais"
+      ]
+    },
+    "resultados": {
+      "titulo": "O que muda ao fim do projeto",
+      "itens": [
+        { "rotulo": "Antecipação", "texto": "Alertas semanas antes do pico de casos, com metas a definir pela equipe." },
+        { "rotulo": "Capacidade local", "texto": "Equipes municipais usando os painéis de forma contínua." },
+        { "rotulo": "Evidência", "texto": "Modelos validados com séries históricas, prontos para ampliar." }
+      ]
+    },
+    "alinhamento": {
+      "titulo": "Clima e saúde no centro da chamada",
+      "itens": [
+        { "rotulo": "Tema", "texto": "A chamada prioriza sistemas de alerta que unem clima e saúde em países de renda média." },
+        { "rotulo": "Porte", "texto": "O valor estimado cabe na faixa de apoio da chamada." },
+        { "rotulo": "Execução", "texto": "Parceria com secretarias garante uso real das ferramentas." }
+      ]
+    },
+    "escala": {
+      "titulo": "Investimento proporcional ao impacto",
+      "texto": "O orçamento cobre integração de dados, modelagem, implantação dos painéis e formação das equipes, com detalhamento [a definir pela equipe]."
+    },
+    "parcerias_cronograma": {
+      "titulo": "Quem faz e quando",
+      "parcerias": ["ILMD – Fiocruz Amazônia", "Secretarias municipais de saúde", "London School of Hygiene & Tropical Medicine (colaboração em modelagem)"],
+      "etapas": [
+        { "periodo": "Meses 1–6", "texto": "Integração das bases e acordos de dados" },
+        { "periodo": "Meses 7–12", "texto": "Modelos de alerta e validação" },
+        { "periodo": "Meses 13–24", "texto": "Painéis em 10 municípios e formação" }
+      ]
+    },
+    "proximos_passos": {
+      "titulo": "Como avançamos juntos",
+      "itens": ["Conversa inicial com a equipe do financiador", "Envio da nota conceitual", "Definição do orçamento detalhado e das metas"]
+    },
+    "notas": [
+      "Apresente o projeto e o nome da unidade.", "Leia a tese com calma; é a mensagem principal.", "Explique por que a detecção é tardia.",
+      "Mostre os quatro objetivos.", "Destaque o que muda para os municípios.", "Mostre o alinhamento com a chamada.",
+      "Comente a faixa de investimento.", "Apresente os parceiros e as etapas.", "Proponha o próximo passo concreto."
+    ],
+    "termos_imagem": ["Aedes aegypti", "Amazônia", "vigilância em saúde"]
+  },
+  "imagens": []
+}

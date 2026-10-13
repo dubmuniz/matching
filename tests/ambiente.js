@@ -101,6 +101,7 @@ function criarContexto(abas, respostasApi = [], opcoes = {}) {
         return {
           getResponseCode: () => r.codigo,
           getContentText: () => typeof r.corpo === 'string' ? r.corpo : JSON.stringify(r.corpo),
+          getContent: () => [...(r.bytes || Buffer.from(typeof r.corpo === 'string' ? r.corpo : JSON.stringify(r.corpo)))],
           getHeaders: () => r.cabecalhos || {}
         };
       }
@@ -142,6 +143,7 @@ function criarContexto(abas, respostasApi = [], opcoes = {}) {
       computeDigest: (_alg, t) => [...require('node:crypto').createHash('sha256').update(t).digest()],
       computeHmacSha256Signature: (v, k) => [...require('node:crypto').createHmac('sha256', k).update(v).digest()],
       base64EncodeWebSafe: (b) => Buffer.from(b).toString('base64url'),
+      base64Encode: (b) => Buffer.from(b).toString('base64'),
       getUuid: () => require('node:crypto').randomUUID()
     },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock: () => {} }) }

@@ -18,6 +18,9 @@
  *   e-mail do "pesquisador". Gasta créditos da API e conta no limite de 3 envios por e-mail/24 h
  *   (use limparLimitesDeTaxa() para zerar durante os testes).
  *
+ * testarAcervo(): busca fotos no acervo Fiocruz Imagens (sem custo de IA).
+ * testarApresentacao(): gera o texto e as fotos da apresentação executiva para o primeiro edital (gasta créditos).
+ *
  * testarLogin(): mostra a configuração do login, confere a assinatura do passe, cria a aba Acessos
  *   e envia um código de acesso para ESCRITORIO_EMAIL (para conferir se o e-mail chega). Não gasta
  *   créditos da API. testarValidacao() e testarEnvioCompleto() pulam o login.
@@ -87,6 +90,49 @@ function envioValidoDeExemplo_(email) {
   d.site = '';
   d.turnstileToken = '';
   return d;
+}
+
+/**
+ * Busca imagens no acervo Fiocruz Imagens para termos de exemplo e mostra o que viria na apresentação.
+ * Não gasta créditos da API do Claude.
+ */
+function testarAcervo() {
+  var inicio = Date.now();
+  var imagens = buscarImagensAcervo_(['Aedes aegypti', 'Amazônia', 'vigilância em saúde']);
+  var linhas = ['===== TESTE DO ACERVO FIOCRUZ IMAGENS =====',
+    'Tempo: ' + ((Date.now() - inicio) / 1000).toFixed(1) + ' s | imagens: ' + imagens.length];
+  imagens.forEach(function (im) {
+    linhas.push('- ' + im.titulo + ' | ' + im.credito + ' | ' + Math.round(im.base64.length * 0.75 / 1024) + ' KB | ' + im.url_item);
+  });
+  if (!imagens.length) linhas.push('Nenhuma imagem: confira se o acervo está no ar (' + ACERVO_IMAGENS_URL + '/api/items).');
+  linhas.push('===== FIM =====');
+  imprimirEmBlocos_(linhas);
+}
+
+/**
+ * Gera o conteúdo da apresentação executiva para o primeiro edital candidato, com a demanda de exemplo.
+ * GASTA CRÉDITOS DA API (~US$ 0,05–0,10) e conta na cota do ESCRITORIO_EMAIL. O .pptx só é montado na página.
+ */
+function testarApresentacao() {
+  var cfg = obterConfigMatching_();
+  if (!cfg.escritorioEmail) throw new Error('Configure ESCRITORIO_EMAIL antes deste teste.');
+  var base = carregarBaseMatching_(cfg, hojeSaoPaulo_());
+  if (!base.candidatos.length) throw new Error('Nenhum edital candidato na planilha.');
+  var demanda = envioValidoDeExemplo_(cfg.escritorioEmail);
+  delete demanda.site; delete demanda.turnstileToken;
+  var inicio = Date.now();
+  var r = processarApresentacao_({ acao: 'apresentacao', demanda: demanda, alvo: { tipo: 'oportunidade', id: base.candidatos[0].id },
+    idioma: 'Português', site: '', turnstileToken: '' });
+  var linhas = ['===== TESTE DE APRESENTAÇÃO (' + base.candidatos[0].edital + ') =====',
+    'Tempo: ' + ((Date.now() - inicio) / 1000).toFixed(1) + ' s | ok: ' + r.ok + (r.erro ? ' | ' + r.erro : '')];
+  if (r.ok) {
+    linhas.push('Capa: ' + r.slides.titulo_capa);
+    linhas.push('Tese: ' + r.slides.tese);
+    linhas.push('Termos de imagem: ' + r.slides.termos_imagem.join(', ') + ' | fotos: ' + r.imagens.length);
+    r.imagens.forEach(function (im) { linhas.push('  - ' + im.titulo + ' (' + im.credito + ')'); });
+  }
+  linhas.push('===== FIM =====');
+  imprimirEmBlocos_(linhas);
 }
 
 function testarLogin() {

@@ -97,3 +97,16 @@ Legenda: ✅ atendido · ⚠️ atendido com risco residual ou com ação penden
 | Avaliação estratégica da IA fica interna | ✅ | `carater_estrategico` não entra em `montarResultado()`: vai só para a planilha e o e-mail ao Escritório (teste confere que a resposta à página não a contém). A cópia ao pesquisador diz apenas que o Escritório fará contato. |
 | Texto da IA no e-mail | ✅ | Motivos escapados (`escaparHtml`) e cortados em 400 caracteres; só `estrategico === true` explícito conta. |
 | `EMAILS_SEM_LIMITE` | ⚠️ | Só em Propriedades do script. Com o login ligado, o e-mail é o do passe; com o login desligado, qualquer pessoa que digitar um desses e-mails escapa do limite por e-mail (o global de 30/h continua). Use só durante os testes. |
+
+## Fase 4: apresentação executiva (13/10/2026)
+
+| Item | Situação | Onde / como |
+|---|---|---|
+| Fatos do alvo da planilha; nada interno sai | ✅ | Alvo relido pelo ID/nome entre candidatos e organizações não vedadas; `alvoParaIA_`/`alvoParaNavegador_` só com colunas públicas (teste procura colunas internas). |
+| Nome e e-mail fora da IA | ✅ | `demandaParaIA()`; teste confere. Entram só no .pptx, montado no navegador. |
+| Busca de imagens sem SSRF | ✅ | URL de busca fixa (`ACERVO_IMAGENS_URL`); só baixa imagens cujo link começa com o endereço do acervo (teste com item de outro domínio e com `acervo.evil.com`); só itens públicos; tipo JPEG/PNG e até 1,5 MB. |
+| Termos de busca vindos da IA | ✅ | Até 3, cortados em 40 caracteres e passados por `encodeURIComponent`. |
+| Direitos das imagens | ⚠️ | Acervo em acesso aberto, uso não comercial; crédito do autor em cada slide. Confirmar a licença exata no site antes da divulgação ampla. |
+| Biblioteca de terceiros | ✅ | PptxGenJS 3.12.0 (MIT) copiada localmente (sem CDN, compatível com a CSP `script-src 'self'`); teste confere ausência de `eval`/`new Function`. |
+| XSS | ✅ | `app.js` só usa `textContent`; o .pptx é texto puro (PptxGenJS escapa o XML). |
+| Abuso / custo | ✅ | Cota própria (8 por e-mail/24 h, 20/h), honeypot, Turnstile e login. |

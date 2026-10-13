@@ -91,6 +91,7 @@ var COTAS_TAXA_ = {
   extracao: { porEmail: 8, global: 30, prefixo: 'LIMITE_EXTRACAO_EMAIL_', chaveGlobal: 'LIMITE_EXTRACAO_GLOBAL' },
   proposta: { porEmail: 8, global: 20, prefixo: 'LIMITE_PROPOSTA_EMAIL_', chaveGlobal: 'LIMITE_PROPOSTA_GLOBAL' },
   proposta2: { porEmail: 8, global: 20, prefixo: 'LIMITE_PROPOSTA2_EMAIL_', chaveGlobal: 'LIMITE_PROPOSTA2_GLOBAL' },
+  apresentacao: { porEmail: 8, global: 20, prefixo: 'LIMITE_APRESENTACAO_EMAIL_', chaveGlobal: 'LIMITE_APRESENTACAO_GLOBAL' },
   avaliacao: { porEmail: 15, global: 30, prefixo: 'LIMITE_AVALIACAO_EMAIL_', chaveGlobal: 'LIMITE_AVALIACAO_GLOBAL' },
   codigo: { porEmail: 5, global: 30, prefixo: 'LIMITE_CODIGO_EMAIL_', chaveGlobal: 'LIMITE_CODIGO_GLOBAL' },
   lista: { porEmail: 200, global: 1000, prefixo: 'LIMITE_LISTA_EMAIL_', chaveGlobal: 'LIMITE_LISTA_GLOBAL' }

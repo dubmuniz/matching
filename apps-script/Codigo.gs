@@ -10,6 +10,7 @@
  *   oportunidades   lista completa de oportunidades (Catalogo.gs)
  *   extrair         leitura de arquivo (Extracao.gs)
  *   proposta        rascunho de proposta (Proposta.gs)
+ *   apresentacao    apresentação executiva .pptx para um edital ou financiador (Apresentacao.gs)
  * Com o login ligado (LOGIN_ATIVO), todas as ações, menos codigo e entrar, exigem "passe".
  *
  * Resposta sempre em JSON:
@@ -48,7 +49,7 @@ function doPost(e) {
   }
 }
 
-var ACOES_ = ['codigo', 'entrar', 'oportunidades', 'extrair', 'proposta'];
+var ACOES_ = ['codigo', 'entrar', 'oportunidades', 'extrair', 'proposta', 'apresentacao'];
 
 var CHAVE_ULTIMOS_ERROS_ = 'ULTIMOS_ERROS';
 var MAX_ERROS_GUARDADOS_ = 10;
@@ -152,6 +153,10 @@ function processarEnvio_(e, opcoesTeste) {
   }
   if (chavePedido) {
     var json = JSON.stringify(r);
+    // Apresentação com fotos passa do limite do cache (100 KB): guarda a versão sem fotos.
+    if (tamanhoEmBytes_(json) >= 95000 && r && Array.isArray(r.imagens) && r.imagens.length) {
+      json = JSON.stringify(Object.assign({}, r, { imagens: [], imagens_omitidas: true }));
+    }
     if (tamanhoEmBytes_(json) < 95000) cache.put(chavePedido, json, VALIDADE_PEDIDO_S);
     else cache.remove(chavePedido);
   }
@@ -172,6 +177,11 @@ function executarAcao_(acao, dados, cfg) {
   if (acao === 'proposta') {
     r = processarProposta_(dados);
     if (r.ok) registrarAcesso_(cfg, dados.demanda.email, 'Proposta (parte ' + r.parte + ')', dados.idOportunidade);
+    return r;
+  }
+  if (acao === 'apresentacao') {
+    r = processarApresentacao_(dados);
+    if (r.ok) registrarAcesso_(cfg, dados.demanda.email, 'Apresentação executiva', (r.alvo.tipo === 'financiador' ? 'Financiador: ' : 'Edital: ') + r.alvo.nome);
     return r;
   }
   return processarMatching_(dados, cfg);

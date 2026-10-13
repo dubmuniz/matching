@@ -90,6 +90,7 @@ O projeto do matching é **separado** da planilha (*standalone*). O script antig
    | `Catalogo` | lista completa de oportunidades da página inicial |
    | `Extracao` | leitura do arquivo enviado pelo pesquisador (pré-preenchimento) |
    | `Proposta` | rascunho de proposta (ficha, marco lógico, orçamento e Gantt) para um edital escolhido |
+   | `Apresentacao` | apresentação executiva (.pptx) para um edital ou financiador, com fotos do acervo Fiocruz Imagens |
    | `Codigo` | `doGet` / `doPost` (o app da web) |
    | `Testes` | funções de teste para rodar pelo editor |
 
@@ -135,6 +136,8 @@ No topo do editor, escolha a função e clique em **Executar**. O resultado apar
 | 6 | `testarEnvioCompleto` | ~US$ 0,13 | envio real: grava em *Demandas* e manda os e-mails para `ESCRITORIO_EMAIL` |
 | 7 | `testarProposta` | ~US$ 0,15–0,30 | gera as duas partes do rascunho de proposta para o primeiro edital; mostra tempo e resumo |
 | 8 | `testarLogin` | grátis | mostra a configuração do login, confere o passe, cria a aba *Acessos* e envia um código para `ESCRITORIO_EMAIL`. **Confira se o e-mail chegou** (e se não caiu no spam) antes de ligar o login para todos |
+| 9 | `testarAcervo` | grátis | busca fotos no acervo Fiocruz Imagens para termos de exemplo; mostra título, crédito e tamanho |
+| 10 | `testarApresentacao` | ~US$ 0,05–0,10 | gera o texto e as fotos da apresentação executiva para o primeiro edital (o .pptx só é montado na página) |
 
 `testarValidacao` e `testarEnvioCompleto` pulam o login.
 
@@ -150,6 +153,15 @@ Funções de apoio:
 3. Clique em **Implantar**, autorize se o Google pedir e copie a **URL do app da Web**. Ela termina em `/exec`.
 4. Para conferir, abra a URL no navegador: deve aparecer `{"ok":true}`.
 5. Coloque a URL em [`docs/config.js`](docs/config.js), no campo `webAppUrl`. A URL não é secreta: as proteções ficam no servidor.
+
+### Apresentação executiva (.pptx)
+
+Nos cards de **edital** e de **financiador** do resultado há o botão **Gerar apresentação executiva (.pptx)**:
+- uma chamada à IA escreve 9 slides (capa, tese, problema, proposta, resultados, por que este financiador, escala e investimento, parcerias e cronograma, próximos passos), com anotações do apresentador, no idioma escolhido no formulário;
+- os fatos do edital ou do financiador vêm da planilha; nome e e-mail do pesquisador entram só no arquivo, montado no navegador;
+- o visual segue o modelo do Escritório (fonte **Archivo**, capa quase preta, tese em vinho, conteúdo em cinza-claro, destaques em laranja e amarelo). Quem não tiver a fonte Archivo instalada (gratuita, Google Fonts) vê a fonte substituta do PowerPoint;
+- as fotos vêm do acervo **Fiocruz Imagens** (API pública): a IA sugere termos de busca, o servidor escolhe itens públicos com assuntos parecidos e cada foto leva o crédito no slide. Sem foto adequada, a apresentação sai sem foto;
+- é um **rascunho**: a capa e as anotações dizem isso. A biblioteca usada para montar o arquivo é o PptxGenJS (MIT), copiada em `docs/lib/`.
 
 ### Demandas prioritárias
 
@@ -216,6 +228,9 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 | "Este e-mail não tem acesso à plataforma" | e-mail fora de `DOMINIOS_LOGIN` (subdomínios como `@ioc.fiocruz.br` também ficam de fora) ou em `EMAILS_BLOQUEADOS` | acrescente o domínio ou o e-mail completo em `DOMINIOS_LOGIN` |
 | "Sua sessão expirou" | passe com mais de 30 dias, `SEGREDO_PASSE` apagado ou e-mail bloqueado | entrar de novo |
 | Edital novo não aparece na lista | a lista fica 10 minutos em cache | aguarde 10 minutos e recarregue |
+| "(código V3)" ao gerar a apresentação | o Apps Script publicado ainda não tem o arquivo `Apresentacao` | cole `Apresentacao` e os demais arquivos atualizados e crie uma **nova versão** da implantação |
+| "(código X2)" ao gerar a apresentação | o navegador não conseguiu montar o .pptx | atualize o navegador e tente de novo |
+| Apresentação sem fotos | o acervo não achou fotos com assuntos parecidos, ou estava fora do ar | rode `testarAcervo`; as fotos podem ser trocadas no PowerPoint |
 | "(código X1)" ao gerar a proposta | o navegador não conseguiu montar a planilha | atualize o navegador e tente de novo |
 | Página antiga ou sem estilo | cache | Ctrl+Shift+R; confira se o `?v=N` foi aumentado |
 | Edital com integridade "Não avaliado" que deveria ter status | nome do parceiro diferente nas duas abas | `diagnosticoBase()` lista os casos; iguale a grafia |
@@ -234,6 +249,7 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 | Lista de oportunidades | sem custo de IA; 200 acessos por e-mail a cada 24 h |
 | Tamanho do envio | até 20 KB (formulário); arquivo para leitura: até 10 MB |
 | Leitura de arquivo (pré-preenchimento) | ~US$ 0,05–0,20 por arquivo; 8 por e-mail a cada 24 h, 30 por hora |
+| Apresentação executiva (PPTX) | ~US$ 0,05–0,10 por apresentação (1 chamada de 30–60 s, mais a busca no acervo); 8 por e-mail a cada 24 h, 20 por hora |
 | Rascunho de proposta (XLSX) | ~US$ 0,15–0,30 por proposta (2 chamadas de 30–60 s); 8 por e-mail a cada 24 h, 20 por hora |
 | E-mails por dia (conta Gmail gratuita) | ~100 destinatários (cada demanda usa 1 ou 2; cada código de acesso, 1). Com o login, vale migrar para a conta institucional (seção 9), que tem cota maior |
 

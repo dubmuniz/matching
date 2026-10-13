@@ -441,7 +441,7 @@
   var REPETIVEIS = { oportunidades: true, entrar: true };
   // Com idPedido, matching, extração e proposta também podem ser repetidos: o servidor devolve o
   // resultado guardado (ou "pendente", se ainda estiver processando) sem rodar a IA de novo.
-  var COM_ID_PEDIDO = { matching: true, extrair: true, proposta: true };
+  var COM_ID_PEDIDO = { matching: true, extrair: true, proposta: true, apresentacao: true };
   var LIMITE_RECUPERACAO_MS = 5 * 60 * 1000;
   var recursosDoServidor = {};
 
@@ -847,8 +847,11 @@
     }).then(function (r) { reiniciarTurnstile(); return r; });
   }
 
-  function baixarArquivo(bytes, nome, onde) {
-    var blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  var MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  var MIME_PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+
+  function baixarArquivo(bytes, nome, onde, mime) {
+    var blob = new Blob([bytes], { type: mime || MIME_XLSX });
     var url = URL.createObjectURL(blob);
     var a = el('a', 'link-download', 'Baixar novamente');
     a.title = nome;
@@ -931,6 +934,94 @@
       if (!(e && e.mensagem)) console.error('Falha ao gerar a proposta:', e);
       mensagemEstado(estado, (e && e.mensagem) || 'Ocorreu um erro na página ao montar a planilha (código X1).', 'erro');
     }).then(terminar);
+  }
+
+  /* ---------- apresentação executiva (.pptx) ---------- */
+
+  var gerandoApresentacao = false;
+
+  /** Botão "Gerar apresentação executiva" num card de edital ou de financiador. */
+  function blocoApresentacao(alvo) {
+    if (!window.PptxGenJS || !window.ApresentacaoPptx) return null;
+    var bloco = el('div', 'bloco-proposta');
+    var botao = el('button', 'botao-secundario botao-apresentacao', 'Gerar apresentação executiva (.pptx)');
+    botao.type = 'button';
+    var estado = el('div', 'estado-proposta');
+    estado.setAttribute('role', 'status');
+    estado.setAttribute('aria-live', 'polite');
+    botao.addEventListener('click', function (ev) {
+      ev.stopPropagation();
+      gerarApresentacao(alvo, estado);
+    });
+    bloco.appendChild(botao);
+    bloco.appendChild(estado);
+    return bloco;
+  }
+
+  function pedirApresentacao(alvo, idioma) {
+    if (MODO_MOCK) {
+      return new Promise(function (ok) { setTimeout(ok, 1500); }).then(function () {
+        return fetch('mock/apresentacao-exemplo.json', { credentials: 'omit' }).then(function (r) { return r.json(); });
+      });
+    }
+    return aguardarToken().then(function (token) {
+      return enviar({ acao: 'apresentacao', demanda: ultimaDemanda, alvo: alvo, idioma: idioma, site: $('site').value, turnstileToken: token });
+    }).then(function (r) { reiniciarTurnstile(); return r; });
+  }
+
+  /** Logo branco da Fiocruz (PNG) em base64, para a capa e o último slide. Falhou: segue sem logo. */
+  function logoEmBase64() {
+    return fetch('img/logo-fiocruz-branco.png?v=17', { credentials: 'omit' }).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.arrayBuffer();
+    }).then(function (b) {
+      var bytes = new Uint8Array(b), bin = '';
+      for (var i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 8192));
+      return window.btoa(bin);
+    }).catch(function (e) { console.warn('Logo indisponível para a apresentação:', e); return ''; });
+  }
+
+  function gerarApresentacao(alvo, estado) {
+    if (gerandoApresentacao) return;
+    if (!ultimaDemanda) { mensagemEstado(estado, 'Refaça o matching antes de gerar a apresentação.', 'erro'); return; }
+    var marcado = form.querySelector('input[name="idiomaProposta"]:checked');
+    var idioma = marcado ? marcado.value : 'Português';
+    gerandoApresentacao = true;
+    var botoes = document.querySelectorAll('.botao-apresentacao');
+    Array.prototype.forEach.call(botoes, function (b) { b.disabled = true; });
+    mensagemEstado(estado, 'Escrevendo os slides e buscando fotos no acervo Fiocruz Imagens (até 1 minuto)…', 'carregando');
+
+    var resposta;
+    pedirApresentacao(alvo, idioma).then(function (r) {
+      if (!r || !r.ok) {
+        if (r && r.campos) {
+          console.error('Pedido de apresentação recusado como formulário:', r);
+          throw { mensagem: 'O serviço ainda não reconhece o pedido de apresentação (código V3). O Apps Script precisa ser atualizado e implantado em uma nova versão.' };
+        }
+        throw { mensagem: (r && r.erro) || 'Não foi possível gerar a apresentação.' };
+      }
+      resposta = r;
+      return logoEmBase64();
+    }).then(function (logo) {
+      var pres = window.ApresentacaoPptx.montar(window.PptxGenJS, {
+        idioma: resposta.idioma || idioma, demanda: ultimaDemanda, alvo: resposta.alvo,
+        slides: resposta.slides, imagens: resposta.imagens || [], logo: logo
+      });
+      return pres.write({ outputType: 'uint8array' });
+    }).then(function (bytes) {
+      var nfotos = (resposta.imagens || []).length;
+      var msg = 'Apresentação pronta: o download começou. É um rascunho: revise os textos antes de usar. ' +
+        (nfotos ? 'Fotos do acervo Fiocruz Imagens, com crédito em cada slide.'
+          : 'Nenhuma foto adequada foi encontrada no acervo; os slides saíram sem foto.');
+      mensagemEstado(estado, msg, 'ok');
+      baixarArquivo(bytes, window.ApresentacaoPptx.nomeArquivo(resposta.alvo && resposta.alvo.nome), estado, MIME_PPTX);
+    }).catch(function (e) {
+      if (!(e && e.mensagem)) console.error('Falha ao gerar a apresentação:', e);
+      mensagemEstado(estado, (e && e.mensagem) || 'Ocorreu um erro na página ao montar a apresentação (código X2).', 'erro');
+    }).then(function () {
+      gerandoApresentacao = false;
+      Array.prototype.forEach.call(botoes, function (b) { b.disabled = false; });
+    });
   }
 
   /* ---------- resultados ---------- */
@@ -1016,6 +1107,7 @@
     rodape.appendChild(botaoCriterios(art, c));
     art.appendChild(rodape);
     adicionar(art, blocoProposta(c));
+    adicionar(art, blocoApresentacao({ tipo: 'oportunidade', id: c.id }));
     return art;
   }
 
@@ -1075,6 +1167,7 @@
     var rodape = el('div', 'card-acoes');
     adicionar(rodape, linkExterno(c.website, 'Website', 'Website de ' + c.organizacao));
     if (rodape.childNodes.length) art.appendChild(rodape);
+    adicionar(art, blocoApresentacao({ tipo: 'financiador', organizacao: c.organizacao }));
     return art;
   }
 

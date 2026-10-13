@@ -63,6 +63,13 @@ Idioma do projeto: português do Brasil (código, comentários, mensagens de com
 - Página: telas por endereço (`#oportunidades`, `#avaliar`, `#avaliar/<ID>`), passe e última lista no `localStorage` (apagados em *Sair*). A resposta de `entrar` já traz a lista; `entrar` repetido com o mesmo código em até 3 min devolve o mesmo passe. Só `oportunidades` e `entrar` são repetidos às cegas após falha de comunicação. Matching, extração e proposta levam `idPedido` (UUID gerado pela página, só se o servidor anunciar `recursos.idPedido`): o servidor guarda a resposta por 10 min sob o hash de ação + e-mail do passe + idPedido (ou responde `pendente` enquanto processa), e a página repete o mesmo pedido por até 5 min sem nova chamada à IA. Implantar o Apps Script antes de publicar a página.
 - Planilha: cada aba é lida de uma vez (`getDisplayValues` do intervalo todo), mais uma leitura por coluna de data ou de link.
 
+## Fase 4: apresentação executiva em PPTX (`apps-script/Apresentacao.gs`, `docs/apresentacao.js`, `docs/lib/pptxgen.bundle.js`)
+- Botão nos cards de edital e de financiador. Uma requisição `acao: "apresentacao"` (`alvo` = `{tipo:'oportunidade', id}` ou `{tipo:'financiador', organizacao}`, `idioma` do campo idiomaProposta). O alvo é relido da planilha (só candidatos e organizações não vedadas). Nome e e-mail não vão para a IA.
+- A IA devolve 9 slides de estrutura fixa (schema próprio, `normalizarApresentacao()`), anotações do apresentador e `termos_imagem`. `PROMPT_APRESENTACAO_VERSAO` segue a regra de versão.
+- Fotos do acervo Fiocruz Imagens (Omeka S, `/api/items?fulltext_search=`): só `o:is_public`, só URLs do próprio acervo (`dadosDoItemAcervo`), JPEG/PNG até 1,5 MB, até 3 fotos, crédito "Foto: autor / Fiocruz Imagens" no slide. Falha no acervo → apresentação sem foto, nunca erro.
+- PPTX montado no navegador com PptxGenJS 3.12.0 (MIT, cópia local em `docs/lib/`, sem eval, licença em `LICENCAS.txt`). Visual do modelo do Escritório: Archivo, 16:9, capa #201E1D, tese #6E2623, conteúdo #F3F2F2, destaques #EF7918/#FFC000. Sempre marcado como rascunho.
+- Resposta com fotos passa de 100 KB: o cache do idPedido guarda a versão sem fotos (`imagens_omitidas`). Cota 8 por e-mail/24 h, 20/h.
+
 ## Testes e fluxo
 - Funções puras (`Prazo.gs`, `Preselecao.gs`) rodam no Apps Script e no Node (`if (typeof module !== 'undefined') module.exports = {...}`). Testes: `node --test` (descobre `tests/*.test.js`). `tests/apps-script.test.js` carrega todos os `.gs` com serviços simulados e confere colisão de nomes com o script existente.
 - Construção por etapas (seção 12), com revisão do Bruno ao fim de cada uma. Commit em português ao fim de cada etapa, direto na `main`.

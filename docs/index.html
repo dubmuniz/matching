@@ -8,14 +8,14 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Fioconecta · Matching de Oportunidades</title>
   <meta name="description" content="Consulte os editais da base curada pelo Escritório de Captação da Fiocruz e avalie a aderência do seu projeto.">
-  <link rel="stylesheet" href="styles.css?v=16">
+  <link rel="stylesheet" href="styles.css?v=17">
 </head>
 <body>
   <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
   <header class="topo">
     <div class="topo-interno">
-      <img class="logo" src="img/logo-fiocruz.webp?v=16" alt="Fiocruz" width="164" height="46">
+      <img class="logo" src="img/logo-fiocruz.webp?v=17" alt="Fiocruz" width="164" height="46">
       <div class="topo-textos">
         <p class="sobretitulo">Escritório de Captação de Recursos · Presidência da Fiocruz</p>
         <h1>Fioconecta · Matching de Oportunidades</h1>
@@ -261,8 +261,8 @@
         </fieldset>
 
         <fieldset class="campo grupo" aria-describedby="idiomaProposta-ajuda idiomaProposta-erro">
-          <legend>Idioma do rascunho de proposta</legend>
-          <p id="idiomaProposta-ajuda" class="ajuda">Depois do matching, você pode gerar um rascunho de proposta (XLSX) para um edital escolhido, neste idioma.</p>
+          <legend>Idioma da proposta e da apresentação</legend>
+          <p id="idiomaProposta-ajuda" class="ajuda">Depois do matching, você pode gerar um rascunho de proposta (XLSX) e uma apresentação executiva (PPTX) para um edital ou financiador, neste idioma.</p>
           <div class="opcoes opcoes-linha" id="opcoes-idiomaProposta"></div>
           <p id="idiomaProposta-erro" class="erro" hidden></p>
         </fieldset>
@@ -307,9 +307,11 @@
     <p>Sugestões geradas com apoio de IA a partir da base curada pelo Escritório de Captação. Não constituem decisão institucional. O Escritório entrará em contato.</p>
   </footer>
 
-  <script src="config.js?v=16"></script>
-  <script src="xlsx.js?v=16"></script>
-  <script src="proposta.js?v=16"></script>
-  <script src="app.js?v=16"></script>
+  <script src="config.js?v=17"></script>
+  <script src="xlsx.js?v=17"></script>
+  <script src="proposta.js?v=17"></script>
+  <script src="lib/pptxgen.bundle.js?v=17"></script>
+  <script src="apresentacao.js?v=17"></script>
+  <script src="app.js?v=17"></script>
 </body>
 </html>

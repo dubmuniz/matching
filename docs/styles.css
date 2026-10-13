@@ -181,7 +181,7 @@ textarea { resize: vertical; min-height: 5.5rem; }
 /* ---------- rascunho de proposta (fase 2B) ---------- */
 
 .bloco-proposta { border-top: 1px dashed var(--cor-borda); padding-top: .6rem; display: grid; gap: .45rem; }
-.botao-proposta { justify-self: start; }
+.botao-proposta, .botao-apresentacao { justify-self: start; }
 .estado-proposta:empty { display: none; }
 .estado-proposta { border-radius: 6px; padding: .5rem .75rem; font-size: .9rem; }
 .estado-proposta p { margin: 0; }

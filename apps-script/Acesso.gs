@@ -180,7 +180,7 @@ function sessaoDoEnvio_(cfg, dados) {
 
 /** Com login, o e-mail que vale é o do passe, nunca o digitado. */
 function aplicarEmailDaSessao_(dados, email) {
-  if (dados.acao === 'proposta') {
+  if (dados.acao === 'proposta' || dados.acao === 'apresentacao') {
     if (dados.demanda && typeof dados.demanda === 'object' && !Array.isArray(dados.demanda)) dados.demanda.email = email;
   } else {
     dados.email = email;
