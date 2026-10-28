@@ -98,7 +98,7 @@
   .numeros .grade { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
   .numero { background: var(--branco); border-radius: var(--raio); padding: 24px; text-align: center; }
   .numero b { display: block; font-family: "Fredoka", sans-serif; font-size: 2.6rem; color: var(--laranja); line-height: 1.1; }
-  .numero span { font-size: .95rem; color: var(--texto-suave); }
+  .numero > span { font-size: .95rem; color: var(--texto-suave); }
   @media (max-width: 760px) { .numeros .grade { grid-template-columns: repeat(2, 1fr); } }
 
   /* Duas colunas */
@@ -140,12 +140,11 @@
   .item-ficha small { display: block; text-transform: uppercase; letter-spacing: .12em; font-size: .78rem; color: #b9dca0; margin-bottom: 6px; font-weight: 700; }
   .item-ficha b { font-family: "Fredoka", sans-serif; font-size: 1.35rem; font-weight: 600; line-height: 1.25; display: block; }
   .item-ficha.largo { grid-column: span 2; }
-  .item-ficha.inteiro { grid-column: 1 / -1; }
   .item-ficha.laranja { background: var(--laranja); }
   .item-ficha.verde { background: var(--verde); }
   .item-ficha.verde small, .item-ficha.laranja small { color: rgba(255,255,255,.85); }
   .nota { font-size: .9rem; color: var(--texto-suave); margin-top: 20px; }
-  @media (max-width: 760px) { .ficha .grade { grid-template-columns: 1fr; } .item-ficha.largo, .item-ficha.inteiro { grid-column: auto; } }
+  @media (max-width: 760px) { .ficha .grade { grid-template-columns: 1fr; } .item-ficha.largo { grid-column: auto; } }
 
   /* Contrapartidas e cotas */
   .contrapartidas { background: var(--verde-escuro); color: var(--branco); }
@@ -220,7 +219,6 @@
         <p class="subtitulo en">Style and sustainability in the schools of Campo Grande</p>
         <div class="botoes">
           <a class="botao cheio" href="#cotas"><span class="pt">Seja patrocinador</span><span class="en">Become a sponsor</span></a>
-          <a class="botao contorno" href="smartmoda-projeto-executivo.pdf" download><span class="pt">Baixar o projeto (PDF)</span><span class="en">Download the project (PDF, in Portuguese)</span></a>
         </div>
       </div>
       <div class="foto">
@@ -231,9 +229,9 @@
 
   <section class="numeros" aria-label="Números do projeto">
     <div class="container grade">
+      <div class="numero"><b>190</b><span class="pt">crianças e adolescentes</span><span class="en">children and teenagers</span></div>
       <div class="numero"><b>3</b><span class="pt">escolas públicas</span><span class="en">public schools</span></div>
       <div class="numero"><b>6</b><span class="pt">trajes completos</span><span class="en">complete outfits</span></div>
-      <div class="numero"><b>3</b><span class="pt">desfiles gratuitos</span><span class="en">free fashion shows</span></div>
       <div class="numero"><b><span class="pt">4.000+</span><span class="en">4,000+</span></b><span class="pt">pessoas alcançadas</span><span class="en">people reached</span></div>
     </div>
   </section>
@@ -285,9 +283,9 @@
       <h2><span class="pt">Público</span><span class="en">Who it reaches</span></h2>
       <div class="cartoes">
         <div class="cartao">
-          <h3><span class="pt">Adolescentes</span><span class="en">Teenagers</span></h3>
-          <p class="pt">Adolescentes entre 12 e 17 anos, estudantes de escolas públicas de Campo Grande (RJ).</p>
-          <p class="en">Teenagers aged 12 to 17 attending public schools in Campo Grande, Rio de Janeiro.</p>
+          <h3><span class="pt">Crianças e adolescentes</span><span class="en">Children and teenagers</span></h3>
+          <p class="pt"><strong>190 crianças e adolescentes</strong>, estudantes de escolas públicas de Campo Grande (RJ).</p>
+          <p class="en"><strong>190 children and teenagers</strong> attending public schools in Campo Grande, Rio de Janeiro.</p>
         </div>
         <div class="cartao">
           <h3><span class="pt">Grupo produtivo</span><span class="en">Production group</span></h3>
@@ -325,7 +323,6 @@
         <div class="item-ficha largo"><small><span class="pt">Local</span><span class="en">Location</span></small><b><span class="pt">Três escolas públicas de Campo Grande, Rio de Janeiro (RJ)</span><span class="en">Three public schools in Campo Grande, Rio de Janeiro, Brazil</span></b></div>
         <div class="item-ficha largo"><small><span class="pt">Valor de execução</span><span class="en">Total budget</span></small><b>R$ 327.112,50 <span class="pt">(via Lei Rouanet, art. 18)</span><span class="en">(via the Rouanet Law, art. 18)</span></b></div>
         <div class="item-ficha laranja"><small>PRONAC</small><b>253861</b></div>
-        <div class="item-ficha verde inteiro"><small><span class="pt">Prazo de captação</span><span class="en">Fundraising deadline</span></small><b><span class="pt">Até 31/12/2025</span><span class="en">Until 31 December 2025</span></b></div>
       </div>
       <p class="nota pt">O projeto está aprovado na Lei Federal de Incentivo à Cultura (Lei Rouanet). Pelo art. 18, empresas e pessoas físicas podem destinar o patrocínio a partir do Imposto de Renda devido, dentro dos limites legais.</p>
       <p class="nota en">The project is approved under Brazil's Federal Culture Incentive Law (Rouanet Law). Under article 18, Brazilian companies and individuals can direct their sponsorship from income tax owed, within the legal limits.</p>
@@ -446,7 +443,6 @@
         <p class="en">Get in touch with Humana Brasil to learn more about the project and choose your sponsorship package.</p>
         <div class="botoes">
           <a class="botao cheio" href="https://humanabrasil.org" target="_blank" rel="noopener noreferrer">humanabrasil.org</a>
-          <a class="botao contorno" href="smartmoda-projeto-executivo.pdf" download><span class="pt">Projeto executivo (PDF)</span><span class="en">Executive project (PDF)</span></a>
         </div>
       </div>
       <ul class="redes">
