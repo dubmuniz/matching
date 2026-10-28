@@ -134,6 +134,19 @@
   }
   @media (max-width: 760px) { .lista-acoes { grid-template-columns: 1fr; } }
 
+  /* Fotos nas escolas */
+  .galeria { display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 260px; gap: 12px; margin-top: 8px; }
+  .galeria figure { margin: 0; border-radius: var(--raio); overflow: hidden; }
+  .galeria img { width: 100%; height: 100%; object-fit: cover; }
+  .galeria .turma { grid-column: 1 / 3; grid-row: span 2; }
+  .galeria .alta { grid-row: span 2; }
+  .galeria .larga { grid-column: span 3; grid-row: span 2; }
+  @media (max-width: 760px) {
+    .galeria { grid-template-columns: 1fr 1fr; grid-auto-rows: 240px; }
+    .galeria .turma { grid-column: 1 / -1; grid-row: span 1; }
+    .galeria .alta, .galeria .larga { grid-column: auto; grid-row: span 1; }
+  }
+
   /* Ficha */
   .ficha .grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
   .item-ficha { background: var(--verde-escuro); color: var(--branco); border-radius: var(--raio); padding: 24px; }
@@ -197,6 +210,7 @@
     <nav class="menu" aria-label="Seções">
       <a href="#projeto"><span class="pt">O projeto</span><span class="en">The project</span></a>
       <a href="#acoes"><span class="pt">Ações</span><span class="en">Activities</span></a>
+      <a href="#escolas"><span class="pt">Fotos</span><span class="en">Photos</span></a>
       <a href="#ficha"><span class="pt">Ficha técnica</span><span class="en">Key facts</span></a>
       <a href="#cotas"><span class="pt">Patrocínio</span><span class="en">Sponsorship</span></a>
       <a href="#equipe"><span class="pt">Equipe</span><span class="en">Team</span></a>
@@ -312,6 +326,21 @@
         <li><span class="pt">Produção e divulgação de minidocumentário registrando todo o processo criativo.</span><span class="en">A short documentary recording the whole creative process, produced and released.</span></li>
         <li><span class="pt">Exibições públicas dos produtos finais, presenciais e online.</span><span class="en">Public exhibitions of the final pieces, in person and online.</span></li>
       </ol>
+    </div>
+  </section>
+
+  <section id="escolas">
+    <div class="container">
+      <h2><span class="pt">Nas escolas</span><span class="en">In the schools</span></h2>
+      <p class="pt">Registros das oficinas com estudantes de escolas públicas de Campo Grande.</p>
+      <p class="en">Snapshots from the workshops with public school students in Campo Grande.</p>
+      <div class="galeria">
+        <figure class="turma"><img src="img/escola-turma.jpg" alt="Estudantes e educadora reunidos na horta da escola, segurando espigas de milho" width="1200" height="900" loading="lazy"></figure>
+        <figure class="alta"><img src="img/escola-prova.jpg" alt="Estudante prova uma peça de tecido estampado enquanto a colega faz ajustes com a tesoura" width="675" height="1200" loading="lazy"></figure>
+        <figure class="alta"><img src="img/escola-recorte.jpg" alt="Estudante recorta um tecido vermelho durante a oficina" width="900" height="1200" loading="lazy"></figure>
+        <figure class="alta"><img src="img/escola-costura-maquinas.jpg" alt="Estudantes costurando em máquinas de costura em sala de aula" width="900" height="1200" loading="lazy"></figure>
+        <figure class="larga"><img src="img/escola-costura-detalhe.jpg" alt="Estudantes concentrados na oficina de costura" width="1200" height="675" loading="lazy"></figure>
+      </div>
     </div>
   </section>
 
