@@ -15,7 +15,11 @@ Página (GitHub Pages, pasta docs/)  ──POST──▶  Apps Script (app da we
                                                 e "Acessos", envia e-mail
 ```
 
-**Telas:** entrar (e-mail institucional + código de 6 números, válido por 30 dias no navegador) → **Oportunidades** (lista completa, com busca e filtro de prazo; cada edital tem o botão *Avaliar meu projeto para este edital*) → **Avaliar meu projeto** (formulário; com um edital escolhido, a IA avalia só esse edital; sem edital, compara com toda a base).
+**Telas:** entrar (e-mail institucional + código de 6 números, válido por 30 dias no navegador) → **Oportunidades** (lista completa, com busca e filtro de prazo, inclusive "prazo nos próximos 3 meses" e "6 meses"; cada edital tem o botão *Ver se combina com meu projeto*) → **Recomendações para meu projeto** (formulário; com um edital escolhido, a IA analisa só esse edital; sem edital, compara com toda a base).
+
+**Recomendação, não parecer:** a página mostra a nota como grau de recomendação (*Muito recomendada*, *Recomendada*, *Pode interessar*, *Pouco indicada*; o número fica em "Ver critérios") e avisa que não é parecer, avaliação de mérito nem pré-seleção do Escritório.
+
+**Página "Sobre a plataforma"** (`docs/sobre.html`, sem login, com link na tela de entrada, na navegação e no rodapé): o que é a plataforma, quem somos, governança da captação, como usar, sobre as recomendações e privacidade. Para exibir o vídeo, cole o link no atributo `data-video` de `#video` em `sobre.html` (YouTube, Vimeo, Google Drive compartilhado com "qualquer pessoa com o link" ou um `.mp4` da pasta `docs/`, por exemplo `video/fioconecta.mp4`); vazio, aparece "em breve".
 
 ---
 
@@ -118,6 +122,7 @@ Em ⚙️ **Configurações do projeto → Propriedades do script → Adicionar 
 | `RETENCAO_ACESSOS_MESES` | não (padrão: 12) | por quanto tempo a aba *Acessos* guarda os registros |
 | `EMAILS_SEM_LIMITE` | não | e-mails da equipe, separados por vírgula, sem limite por e-mail (para testes). O limite total por hora continua valendo |
 | `EMAILS_PRIORIDADE` | não | quem recebe **cópia** das demandas prioritárias (seção 5), além de `ESCRITORIO_EMAIL`, separado por vírgula |
+| `AVISAR_AVALIACOES` | não (padrão: `nao`) | `sim` manda e-mail ao Escritório a cada análise de um edital escolhido. Desligado, essas análises ficam só na aba Demandas (as prioritárias continuam avisando), para uma chamada concorrida não virar dezenas de e-mails |
 | `SEGREDO_PASSE` | **não cadastre** | criado sozinho no primeiro login. Apagar desconecta todo mundo (todos precisam entrar de novo) |
 
 Você também pode preencher os valores na função `configurarPropriedades()`, no arquivo `Config`, e rodá-la uma vez. Mas é mais seguro cadastrar a chave da API direto na tela de propriedades. Se colar a chave no código, volte o valor para `COLE_AQUI` depois de rodar.
@@ -246,7 +251,7 @@ Cada alteração enviada à pasta `docs/` da `main` é publicada sozinha em cerc
 | Tempo de resposta | 30–60 s |
 | Envios por e-mail (matching com toda a base) | 5 a cada 24 h (e-mails em `EMAILS_SEM_LIMITE` não têm limite por e-mail) |
 | Envios no total | 30 por hora |
-| Avaliação de um edital escolhido | ~US$ 0,02–0,04 (só um edital vai para a IA); 15 por e-mail a cada 24 h, 30 por hora; só o Escritório recebe e-mail |
+| Avaliação de um edital escolhido | ~US$ 0,02–0,04 (só um edital vai para a IA); 15 por e-mail a cada 24 h, 30 por hora; fica na aba Demandas, sem e-mail (salvo prioritária ou `AVISAR_AVALIACOES=sim`) |
 | Códigos de acesso | 5 por e-mail a cada 24 h, 30 por hora; cada código gasta 1 e-mail |
 | Lista de oportunidades | sem custo de IA; 200 acessos por e-mail a cada 24 h |
 | Tamanho do envio | até 20 KB (formulário); arquivo para leitura: até 10 MB |

@@ -316,11 +316,17 @@ function registrarDemanda_(ss, linhaPadrao) {
 
 /**
  * @param {{ editalAvaliado?: string }} opcoes  na avaliação de um edital escolhido não há cópia ao
- *   pesquisador (ele vê o resultado na tela e pode avaliar vários editais por dia)
+ *   pesquisador (ele vê o resultado na tela e pode avaliar vários editais por dia) e, por padrão,
+ *   nem e-mail ao Escritório: a avaliação fica só na aba Demandas, salvo se for prioritária ou se
+ *   AVISAR_AVALIACOES = 'sim'. Assim uma chamada concorrida não vira dezenas de e-mails.
  */
 function enviarEmails_(cfg, demanda, idDemanda, resultado, erroIA, opcoes) {
   opcoes = opcoes || {};
-  if (cfg.escritorioEmail) {
+  var prioritaria = !!(opcoes.prioridade && opcoes.prioridade.prioritaria);
+  var avisarEscritorio = !opcoes.editalAvaliado || prioritaria || cfg.avisarAvaliacoes;
+  if (!avisarEscritorio) {
+    console.log('Avaliação de edital registrada sem e-mail ao Escritório (AVISAR_AVALIACOES desligado).');
+  } else if (cfg.escritorioEmail) {
     var url = 'https://docs.google.com/spreadsheets/d/' + encodeURIComponent(cfg.spreadsheetId) + '/edit';
     var e1 = montarEmailEscritorio(demanda, idDemanda, resultado, url, erroIA, opcoes);
     var mensagem = {
@@ -331,7 +337,7 @@ function enviarEmails_(cfg, demanda, idDemanda, resultado, erroIA, opcoes) {
       name: 'Fioconecta Matching',
       replyTo: demanda.email
     };
-    if (opcoes.prioridade && opcoes.prioridade.prioritaria && cfg.emailsPrioridade.length) {
+    if (prioritaria && cfg.emailsPrioridade.length) {
       mensagem.cc = cfg.emailsPrioridade.join(',');
     }
     MailApp.sendEmail(mensagem);

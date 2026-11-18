@@ -986,8 +986,8 @@
     var chaves = window.ApresentacaoPptx.iconesUsados(slides).filter(function (k) {
       return window.ApresentacaoPptx.ICONES.indexOf(k) >= 0;
     });
-    return Promise.all([arquivoEmBase64('img/logo-fiocruz-branco.png?v=19')].concat(chaves.map(function (k) {
-      return arquivoEmBase64('img/icones/' + k + '.png?v=19');
+    return Promise.all([arquivoEmBase64('img/logo-fiocruz-branco.png?v=20')].concat(chaves.map(function (k) {
+      return arquivoEmBase64('img/icones/' + k + '.png?v=20');
     }))).then(function (lista) {
       var icones = {};
       chaves.forEach(function (k, i) { if (lista[i + 1]) icones[k] = lista[i + 1]; });
@@ -1045,6 +1045,17 @@
     ['maturidade', 'Maturidade', 10], ['viabilidade', 'Viabilidade', 10]
   ];
 
+  /**
+   * A nota vira um grau de recomendação: é uma orientação automática para o pesquisador escolher
+   * onde investir esforço, não um parecer nem uma pré-seleção do Escritório.
+   */
+  function rotuloRecomendacao(nota) {
+    if (nota >= 75) return 'Muito recomendada';
+    if (nota >= 60) return 'Recomendada';
+    if (nota >= 40) return 'Pode interessar';
+    return 'Pouco indicada';
+  }
+
   function classeSelo(nota) {
     if (nota >= 75) return 'selo selo-alta';
     if (nota >= 60) return 'selo selo-boa';
@@ -1083,7 +1094,7 @@
   function cardOportunidade(c) {
     var art = el('article', 'card');
     var topo = el('div', 'card-topo');
-    topo.appendChild(el('span', classeSelo(c.nota), c.nota + ' · ' + c.selo));
+    topo.appendChild(el('span', classeSelo(c.nota), rotuloRecomendacao(c.nota)));
     adicionar(topo, seloIntegridade(c));
     art.appendChild(topo);
 
@@ -1105,7 +1116,7 @@
     art.appendChild(fatos);
 
     adicionar(art, paragrafoRotulado('Por que combina', c.por_que_combina));
-    adicionar(art, paragrafoRotulado('Lacunas e riscos', c.lacunas_e_riscos));
+    adicionar(art, paragrafoRotulado('Pontos de atenção', c.lacunas_e_riscos));
     if (c.requisitos_criticos && c.requisitos_criticos.length) {
       var req = el('div', 'requisitos');
       req.appendChild(el('p', 'requisitos-titulo', 'Requisitos críticos'));
@@ -1135,6 +1146,7 @@
     var painel = el('div', 'criterios');
     painel.id = id;
     painel.hidden = true;
+    painel.appendChild(el('p', 'criterios-total', 'Compatibilidade estimada pela IA: ' + c.nota + ' de 100, pela soma dos critérios abaixo.'));
     CRITERIOS.forEach(function (k) {
       var valor = (c.criterios && typeof c.criterios[k[0]] === 'number') ? c.criterios[k[0]] : 0;
       var linha = el('div', 'criterio');
@@ -1171,7 +1183,7 @@
   function cardFinanciador(c) {
     var art = el('article', 'card card-financiador-org');
     var topo = el('div', 'card-topo');
-    topo.appendChild(el('span', classeSelo(c.nota), c.nota + ' · ' + c.selo));
+    topo.appendChild(el('span', classeSelo(c.nota), rotuloRecomendacao(c.nota)));
     adicionar(topo, seloIntegridade(c));
     art.appendChild(topo);
     art.appendChild(el('h4', 'card-titulo', c.organizacao));
@@ -1198,11 +1210,13 @@
 
   function mostrarResultado(r) {
     var res = r.resultado;
-    $('titulo-resultados').textContent = res.individual ? 'Resultado da avaliação' : 'Resultado do matching';
+    $('titulo-resultados').textContent = res.individual ? 'Este edital para o seu projeto' : 'Recomendações para o seu projeto';
     $('protocolo').textContent = r.id_demanda ? 'Protocolo: ' + r.id_demanda : '';
 
     var topo = $('resumo-demanda');
     topo.textContent = '';
+    topo.appendChild(el('p', 'aviso-recomendacao', 'Recomendações automáticas, geradas com apoio de IA para orientar a sua busca. ' +
+      'Não são parecer, avaliação de mérito nem pré-seleção do Escritório de Captação: a decisão de submeter é da equipe do projeto e da unidade.'));
     if (res.resumo_demanda) topo.appendChild(paragrafoRotulado('Sua demanda', res.resumo_demanda, 'resumo-demanda'));
     if (res.lacunas_da_demanda && res.lacunas_da_demanda.length) {
       var caixa = el('aside', 'caixa-lacunas');
@@ -1220,8 +1234,8 @@
     if (res.vazio) {
       lista.appendChild(el('p', 'mensagem-vazio', res.mensagem_vazio));
     } else if (res.individual) {
-      adicionar(lista, secao('Avaliação do edital escolhido',
-        'Nota de aderência do seu projeto a este edital, com a justificativa. Notas abaixo de 40 indicam baixa aderência.',
+      adicionar(lista, secao('O edital escolhido',
+        'Quanto este edital combina com o seu projeto, com a justificativa e o próximo passo sugerido.',
         [].concat(res.abertas || [], res.monitorar || []), cardOportunidade));
     } else {
       adicionar(lista, secao('Oportunidades abertas', 'Editais com prazo aberto, contínuo, recorrente ou a confirmar.',
@@ -1229,7 +1243,7 @@
       adicionar(lista, secao('Para monitorar (ciclos anteriores)',
         'O último prazo conhecido já passou, mas muitos editais são anuais: vale acompanhar o próximo ciclo.',
         res.monitorar, cardOportunidade));
-      adicionar(lista, secao('Financiadores com aderência',
+      adicionar(lista, secao('Financiadores recomendados',
         'Organizações que podem apoiar a demanda mesmo sem edital aberto.', res.financiadores, cardFinanciador));
     }
 
@@ -1385,6 +1399,9 @@
 
   // A última lista fica guardada neste navegador e aparece na hora na próxima visita,
   // enquanto a versão atual chega do servidor. Sair apaga a cópia.
+  var TEXTO_INTRO_GERAL = 'Descreva o seu projeto. Vamos compará-lo com a base de editais e financiadores mantida pelo Escritório de Captação ' +
+    'e recomendar as oportunidades que mais combinam, com a justificativa de cada sugestão. O Escritório acompanha as demandas registradas ' +
+    'e procura a equipe quando houver prioridade institucional ou necessidade de articulação.';
   var CHAVE_LISTA = 'fioconecta_lista';
   var VALIDADE_LISTA_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -1473,12 +1490,25 @@
     });
   }
 
+  /** Prazo com data entre hoje e daqui a N meses (contínuos e "a confirmar" ficam de fora: não têm data). */
+  function prazoDentroDe(o, meses) {
+    if (o.prazo_status === 'encerrado') return false;
+    var m = String(o.prazo_data || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    if (!m) return false;
+    var data = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    var hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+    var limite = new Date(hoje.getFullYear(), hoje.getMonth() + meses, hoje.getDate());
+    return data >= hoje && data <= limite;
+  }
+
   function filtrarOportunidades() {
     var termo = semAcentos(limpar($('busca').value));
     var prazo = $('filtro-prazo').value;
     return (oportunidades || []).filter(function (o) {
       if (prazo === 'abertas' && o.prazo_status === 'encerrado') return false;
       if (prazo === 'encerradas' && o.prazo_status !== 'encerrado') return false;
+      if ((prazo === 'meses3' || prazo === 'meses6') && !prazoDentroDe(o, prazo === 'meses3' ? 3 : 6)) return false;
       if (!termo) return true;
       return semAcentos([o.financiador, o.edital, o.tema, o.resumo].join(' ')).indexOf(termo) >= 0;
     });
@@ -1530,9 +1560,9 @@
     }
 
     var acoes = el('div', 'card-acoes');
-    var avaliar = el('a', 'botao botao-pequeno', 'Avaliar meu projeto para este edital');
+    var avaliar = el('a', 'botao botao-pequeno', 'Ver se combina com meu projeto');
     avaliar.href = '#avaliar/' + encodeURIComponent(o.id);
-    avaliar.setAttribute('aria-label', 'Avaliar meu projeto para o edital ' + o.edital);
+    avaliar.setAttribute('aria-label', 'Ver se o edital ' + o.edital + ' combina com meu projeto');
     acoes.appendChild(avaliar);
     adicionar(acoes, linkExterno(o.link_edital, 'Ver edital', 'Ver edital ' + o.edital));
     art.appendChild(acoes);
@@ -1594,10 +1624,10 @@
       $('foco-detalhes').textContent = '';
     }
     $('intro-texto').textContent = id
-      ? 'Descreva o seu projeto (ou use os dados já preenchidos). A IA avalia a aderência a este edital, com nota, justificativa, lacunas e próximo passo. Depois, você pode gerar um rascunho de proposta.'
-      : 'Descreva o seu projeto. Vamos compará-lo com a base de editais e financiadores mantida pelo Escritório de Captação e mostrar as oportunidades mais aderentes, com a justificativa de cada sugestão. O Escritório recebe a sua demanda e entrará em contato.';
-    $('botao-enviar').textContent = id ? 'Avaliar aderência a este edital' : 'Encontrar oportunidades';
-    $('texto-carregando').textContent = id ? 'Avaliando a aderência do seu projeto a este edital…' : 'Analisando a aderência do seu projeto…';
+      ? 'Descreva o seu projeto (ou use os dados já preenchidos). A IA indica quanto este edital combina com ele, com a justificativa, os pontos de atenção e o próximo passo. Depois, você pode gerar um rascunho de proposta.'
+      : TEXTO_INTRO_GERAL;
+    $('botao-enviar').textContent = id ? 'Ver se este edital combina' : 'Ver recomendações';
+    $('texto-carregando').textContent = id ? 'Comparando o seu projeto com este edital…' : 'Buscando as oportunidades que combinam com o seu projeto…';
     // Resultado de outra avaliação não fica na tela.
     if (focoDoResultado !== null && focoDoResultado !== focoAtual) {
       $('resultados').hidden = true;

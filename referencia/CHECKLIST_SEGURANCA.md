@@ -113,3 +113,11 @@ Legenda: ✅ atendido · ⚠️ atendido com risco residual ou com ação penden
 | Layouts e ícones da IA (v3, 13/10/2026) | ✅ | `layout` em enum no schema, `icone` na lista do prompt (v4); ambos conferidos em `normalizarApresentacao()`; a página só baixa ícones cujas chaves estão no catálogo (`iconesUsados` + `ICONES`), sempre do próprio site (`connect-src 'self'`). Teste com `../segredo`. |
 | Números inventados | ✅ | `numeroComprovado_`: número em destaque (e números na unidade) precisa estar escrito na demanda; senão é descartado e o layout muda. |
 | Ícones de terceiros | ✅ | Lucide 0.460.0 (ISC), convertidos para PNG; licença em `docs/lib/LICENCAS.txt`. |
+
+## Página "Sobre", recomendações e avisos (18/11/2026)
+
+| Item | Situação | Onde / como |
+|---|---|---|
+| Vídeo incorporado | ✅ | `sobre.js` só monta embed de YouTube (domínio nocookie), Vimeo e Google Drive, a partir de IDs conferidos por expressão regular, ou um `.mp4` relativo sem `..`; nada de HTML do atributo. CSP de `sobre.html`: `script-src 'self'`, `frame-src` só esses três players, `media-src 'self'`. Testes com `javascript:`, http, outro domínio e caminhos com `..`. |
+| Página sem login | ✅ | `sobre.html` é estática, sem dados da planilha nem chamadas ao servidor; o acesso à plataforma continua exigindo login. |
+| Avisos ao Escritório | ✅ | Análise de um edital escolhido não manda e-mail por padrão (`AVISAR_AVALIACOES`); prioritárias continuam avisando. Nada deixa de ser registrado na aba Demandas. |

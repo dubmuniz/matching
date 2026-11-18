@@ -7,15 +7,15 @@
         content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Fioconecta · Matching de Oportunidades</title>
-  <meta name="description" content="Consulte os editais da base curada pelo Escritório de Captação da Fiocruz e avalie a aderência do seu projeto.">
-  <link rel="stylesheet" href="styles.css?v=19">
+  <meta name="description" content="Consulte os editais da base curada pelo Escritório de Captação da Fiocruz e receba recomendações de oportunidades para o seu projeto.">
+  <link rel="stylesheet" href="styles.css?v=20">
 </head>
 <body>
   <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
   <header class="topo">
     <div class="topo-interno">
-      <img class="logo" src="img/logo-fiocruz.webp?v=19" alt="Fiocruz" width="164" height="46">
+      <img class="logo" src="img/logo-fiocruz.webp?v=20" alt="Fiocruz" width="164" height="46">
       <div class="topo-textos">
         <p class="sobretitulo">Escritório de Captação de Recursos · Presidência da Fiocruz</p>
         <h1>Fioconecta · Matching de Oportunidades</h1>
@@ -24,7 +24,8 @@
     <nav id="navegacao" class="navegacao" aria-label="Seções da plataforma" hidden>
       <div class="navegacao-interna">
         <a href="#oportunidades" id="nav-oportunidades">Oportunidades</a>
-        <a href="#avaliar" id="nav-avaliar">Avaliar meu projeto</a>
+        <a href="#avaliar" id="nav-avaliar">Recomendações para meu projeto</a>
+        <a href="sobre.html" id="nav-sobre">Sobre a plataforma</a>
         <span class="navegacao-usuario">
           <span id="usuario"></span>
           <button type="button" id="botao-sair" class="botao-link" hidden>Sair</button>
@@ -74,13 +75,15 @@
         </div>
       </form>
 
+      <p class="nota-sobre">Primeira vez aqui? <a href="sobre.html">Conheça a plataforma, o Escritório de Captação e a governança da captação</a>.</p>
+
       <p class="nota">O acesso vale por 30 dias neste navegador. Registramos o seu e-mail e a data de cada acesso e uso da plataforma, para controle de acesso; esses registros são apagados depois de 12 meses.</p>
     </section>
 
     <!-- ===== Lista de oportunidades ===== -->
     <section id="tela-oportunidades" class="tela" aria-labelledby="titulo-oportunidades" hidden>
       <h2 id="titulo-oportunidades" tabindex="-1">Oportunidades da base</h2>
-      <p>Editais acompanhados pelo Escritório de Captação. Escolha um edital e clique em <strong>Avaliar meu projeto para este edital</strong>, ou <a href="#avaliar">compare o seu projeto com todas as oportunidades de uma vez</a>.</p>
+      <p>Editais acompanhados pelo Escritório de Captação. Escolha um edital e clique em <strong>Ver se combina com meu projeto</strong>, ou <a href="#avaliar">receba recomendações entre todas as oportunidades de uma vez</a>.</p>
 
       <div class="filtros" role="search">
         <div class="campo">
@@ -91,6 +94,8 @@
           <label for="filtro-prazo">Prazo</label>
           <select id="filtro-prazo">
             <option value="abertas">Abertas, contínuas ou a confirmar</option>
+            <option value="meses3">Prazo nos próximos 3 meses</option>
+            <option value="meses6">Prazo nos próximos 6 meses</option>
             <option value="encerradas">Encerradas (próximo ciclo)</option>
             <option value="todas">Todas</option>
           </select>
@@ -102,17 +107,17 @@
       <div id="lista-oportunidades" class="grade-cards"></div>
     </section>
 
-    <!-- ===== Avaliar meu projeto ===== -->
+    <!-- ===== Recomendações para o meu projeto ===== -->
     <section id="tela-avaliar" class="tela" aria-labelledby="titulo-intro" hidden>
     <div class="intro">
-      <h2 id="titulo-intro" tabindex="-1">Avaliar meu projeto</h2>
+      <h2 id="titulo-intro" tabindex="-1">Recomendações para o meu projeto</h2>
       <div id="foco-edital" class="foco-edital" hidden>
         <p class="foco-rotulo">Você está avaliando o seu projeto para este edital:</p>
         <p id="foco-titulo" class="foco-titulo"></p>
         <p id="foco-detalhes" class="foco-detalhes"></p>
         <p><a href="#avaliar">Comparar com todas as oportunidades em vez deste edital</a> · <a href="#oportunidades">Voltar à lista</a></p>
       </div>
-      <p id="intro-texto">Descreva o seu projeto. Vamos compará-lo com a base de editais e financiadores mantida pelo Escritório de Captação e mostrar as oportunidades mais aderentes, com a justificativa de cada sugestão. O Escritório recebe a sua demanda e entrará em contato.</p>
+      <p id="intro-texto">Descreva o seu projeto. Vamos compará-lo com a base de editais e financiadores mantida pelo Escritório de Captação e recomendar as oportunidades que mais combinam, com a justificativa de cada sugestão. O Escritório acompanha as demandas registradas e procura a equipe quando houver prioridade institucional ou necessidade de articulação.</p>
       <p class="nota">Campos marcados com <span class="obrigatorio" aria-hidden="true">*</span><span class="visualmente-oculto">asterisco</span> são obrigatórios. Os dados ficam na página: você pode avaliar vários editais sem preencher de novo. A análise leva de 20 a 60 segundos.</p>
     </div>
 
@@ -283,19 +288,19 @@
       <div id="turnstile" class="turnstile"></div>
 
       <div class="acoes">
-        <button type="submit" id="botao-enviar" class="botao">Encontrar oportunidades</button>
+        <button type="submit" id="botao-enviar" class="botao">Ver recomendações</button>
       </div>
     </form>
 
     <div id="carregando" class="carregando" hidden>
       <div class="girando" aria-hidden="true"></div>
-      <p role="status" id="texto-carregando">Analisando a aderência do seu projeto…</p>
+      <p role="status" id="texto-carregando">Buscando as oportunidades que combinam com o seu projeto…</p>
     </div>
 
     <div id="aviso-geral" class="aviso-erro" role="alert" tabindex="-1" hidden></div>
 
     <section id="resultados" class="resultados" aria-labelledby="titulo-resultados" hidden>
-      <h2 id="titulo-resultados" tabindex="-1">Resultado do matching</h2>
+      <h2 id="titulo-resultados" tabindex="-1">Recomendações para o seu projeto</h2>
       <p id="protocolo" class="protocolo"></p>
       <div id="resumo-demanda"></div>
       <div id="lista-resultados"></div>
@@ -304,14 +309,14 @@
   </main>
 
   <footer class="rodape">
-    <p>Sugestões geradas com apoio de IA a partir da base curada pelo Escritório de Captação. Não constituem decisão institucional. O Escritório entrará em contato.</p>
+    <p>Recomendações geradas com apoio de IA a partir da base curada pelo Escritório de Captação. São orientações, não parecer nem decisão institucional. <a href="sobre.html">Sobre a plataforma</a></p>
   </footer>
 
-  <script src="config.js?v=19"></script>
-  <script src="xlsx.js?v=19"></script>
-  <script src="proposta.js?v=19"></script>
-  <script src="lib/pptxgen.bundle.js?v=19"></script>
-  <script src="apresentacao.js?v=19"></script>
-  <script src="app.js?v=19"></script>
+  <script src="config.js?v=20"></script>
+  <script src="xlsx.js?v=20"></script>
+  <script src="proposta.js?v=20"></script>
+  <script src="lib/pptxgen.bundle.js?v=20"></script>
+  <script src="apresentacao.js?v=20"></script>
+  <script src="app.js?v=20"></script>
 </body>
 </html>

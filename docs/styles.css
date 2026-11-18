@@ -397,3 +397,39 @@ a.botao, a.botao:hover { color: #fff; }
 .selo-baixa { background: #eceff2; color: #3d4852; }
 input[readonly] { background: #eef1f4; color: var(--cor-texto-suave); }
 .caixa-nota { margin: 0 0 .4rem; font-size: .9rem; color: var(--cor-texto-suave); }
+
+/* ---------- recomendações e página "Sobre" ---------- */
+
+.rodape a { color: #fff; font-weight: 600; }
+.nota-sobre { margin: 0 0 .75rem; font-size: .95rem; }
+.aviso-recomendacao {
+  margin: 0 0 1rem; padding: .6rem .9rem; font-size: .93rem;
+  background: #eef4f9; border-radius: var(--raio); color: var(--cor-texto);
+}
+.criterios-total { margin: 0 0 .25rem; font-size: .9rem; color: var(--cor-texto-suave); }
+
+.sobre { max-width: 60rem; }
+.sobre-secao { margin: 0 0 2.25rem; scroll-margin-top: 1rem; }
+.sobre-secao > h2 { margin: .25rem 0 .6rem; color: var(--cor-primaria-escura); font-size: 1.45rem; }
+.sobre-destaque { font-size: 1.12rem; }
+.sobre-grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; }
+.sobre-grade-2 { grid-template-columns: repeat(2, 1fr); }
+@media (max-width: 44rem) { .sobre-grade, .sobre-grade-2 { grid-template-columns: 1fr; } }
+.sobre-cartao {
+  background: var(--cor-superficie); border: 1px solid var(--cor-borda); border-radius: var(--raio);
+  padding: 1rem 1.1rem;
+}
+.sobre-cartao h3 { margin: 0 0 .4rem; color: var(--cor-primaria-escura); font-size: 1.1rem; }
+.sobre-cartao p { margin: 0 0 .4rem; }
+.sobre-rotulo { font-size: .8rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--cor-texto-suave); }
+.sobre-subtitulo { margin: 1.25rem 0 .35rem; color: var(--cor-primaria-escura); font-size: 1.1rem; }
+.sobre-passos { padding-left: 1.4rem; }
+.sobre-passos li, .sobre-lista li { margin-bottom: .6rem; }
+.sobre-video {
+  position: relative; background: #1f2a33; border-radius: var(--raio); overflow: hidden;
+  aspect-ratio: 16 / 9; display: flex; align-items: center; justify-content: center;
+}
+.sobre-video iframe, .sobre-video video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.sobre-video-vazio { color: #e8eef3; margin: 0; padding: 1rem; text-align: center; }
+.sobre-acesso { text-align: center; margin: 1rem 0 2rem; }
+.sobre-acesso .botao { display: inline-block; text-decoration: none; }
