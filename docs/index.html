@@ -8,14 +8,14 @@
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>Fioconecta · Matching de Oportunidades</title>
   <meta name="description" content="Consulte os editais da base curada pelo Escritório de Captação da Fiocruz e receba recomendações de oportunidades para o seu projeto.">
-  <link rel="stylesheet" href="styles.css?v=20">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
   <a class="pular" href="#conteudo">Pular para o conteúdo</a>
 
   <header class="topo">
     <div class="topo-interno">
-      <img class="logo" src="img/logo-fiocruz.webp?v=20" alt="Fiocruz" width="164" height="46">
+      <img class="logo" src="img/logo-fiocruz.webp?v=21" alt="Fiocruz" width="164" height="46">
       <div class="topo-textos">
         <p class="sobretitulo">Escritório de Captação de Recursos · Presidência da Fiocruz</p>
         <h1>Fioconecta · Matching de Oportunidades</h1>
@@ -86,7 +86,7 @@
       <p>Editais acompanhados pelo Escritório de Captação. Escolha um edital e clique em <strong>Ver se combina com meu projeto</strong>, ou <a href="#avaliar">receba recomendações entre todas as oportunidades de uma vez</a>.</p>
 
       <div class="filtros" role="search">
-        <div class="campo">
+        <div class="campo filtro-busca">
           <label for="busca">Buscar por financiador, edital ou tema</label>
           <input id="busca" type="search" maxlength="100" autocomplete="off">
         </div>
@@ -100,7 +100,27 @@
             <option value="todas">Todas</option>
           </select>
         </div>
+        <div class="campo">
+          <label for="filtro-area">Área temática</label>
+          <select id="filtro-area"><option value="">Todas as áreas</option></select>
+        </div>
+        <div class="campo">
+          <label for="filtro-valor">Faixa de valor</label>
+          <select id="filtro-valor" aria-describedby="nota-filtros"><option value="">Qualquer valor</option></select>
+        </div>
+        <div class="campo">
+          <label for="filtro-moeda">Moeda</label>
+          <select id="filtro-moeda"><option value="">Qualquer moeda</option></select>
+        </div>
+        <div class="campo">
+          <label for="filtro-via">Via de governança</label>
+          <select id="filtro-via"><option value="">Todas as vias</option></select>
+        </div>
+        <div class="campo filtro-acoes">
+          <button type="button" id="limpar-filtros" class="botao-link" hidden>Limpar filtros</button>
+        </div>
       </div>
+      <p id="nota-filtros" class="nota-filtros">Área temática e faixa de valor são estimadas a partir do texto de cada edital. A faixa usa o maior valor citado, na moeda do próprio edital, sem conversão.</p>
 
       <div id="aviso-oportunidades" class="aviso-erro" role="alert" tabindex="-1" hidden></div>
       <p id="contagem-oportunidades" class="contagem" role="status" aria-live="polite"></p>
@@ -312,11 +332,12 @@
     <p>Recomendações geradas com apoio de IA a partir da base curada pelo Escritório de Captação. São orientações, não parecer nem decisão institucional. <a href="sobre.html">Sobre a plataforma</a></p>
   </footer>
 
-  <script src="config.js?v=20"></script>
-  <script src="xlsx.js?v=20"></script>
-  <script src="proposta.js?v=20"></script>
-  <script src="lib/pptxgen.bundle.js?v=20"></script>
-  <script src="apresentacao.js?v=20"></script>
-  <script src="app.js?v=20"></script>
+  <script src="config.js?v=21"></script>
+  <script src="filtros.js?v=21"></script>
+  <script src="xlsx.js?v=21"></script>
+  <script src="proposta.js?v=21"></script>
+  <script src="lib/pptxgen.bundle.js?v=21"></script>
+  <script src="apresentacao.js?v=21"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>

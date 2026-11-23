@@ -120,4 +120,5 @@ Legenda: ✅ atendido · ⚠️ atendido com risco residual ou com ação penden
 |---|---|---|
 | Vídeo incorporado | ✅ | `sobre.js` só monta embed de YouTube (domínio nocookie), Vimeo e Google Drive, a partir de IDs conferidos por expressão regular, ou um `.mp4` relativo sem `..`; nada de HTML do atributo. CSP de `sobre.html`: `script-src 'self'`, `frame-src` só esses três players, `media-src 'self'`. Testes com `javascript:`, http, outro domínio e caminhos com `..`. |
 | Página sem login | ✅ | `sobre.html` é estática, sem dados da planilha nem chamadas ao servidor; o acesso à plataforma continua exigindo login. |
-| Avisos ao Escritório | ✅ | Análise de um edital escolhido não manda e-mail por padrão (`AVISAR_AVALIACOES`); prioritárias continuam avisando. Nada deixa de ser registrado na aba Demandas. |
+| Avisos ao Escritório | ✅ | `AVISAR_AVALIACOES` (padrão `sim` na fase de testes; `nao` desliga o e-mail das análises de edital, salvo prioritárias). Nada deixa de ser registrado na aba Demandas. |
+| Filtros da lista (23/11/2026) | ✅ | `filtros.js` só lê os campos públicos do catálogo; nada vai ao servidor nem à IA; opções entram por `textContent` (`el()`); expressões regulares sem entrada do usuário. |

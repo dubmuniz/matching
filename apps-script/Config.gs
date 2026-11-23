@@ -84,7 +84,7 @@ function configurarPropriedades() {
     LOGIN_ATIVO: 'sim',                   // 'nao' desliga o login por código
     DOMINIOS_LOGIN: 'fiocruz.br',         // domínios (ou e-mails completos) que podem entrar, separados por vírgula
     RETENCAO_ACESSOS_MESES: '12',         // por quanto tempo a aba Acessos guarda os registros
-    AVISAR_AVALIACOES: 'nao'              // 'sim': e-mail ao Escritório também a cada avaliação de um edital escolhido
+    AVISAR_AVALIACOES: 'sim'              // 'nao': avaliação de um edital escolhido sem e-mail ao Escritório (salvo prioritária)
   };
 
   var props = PropertiesService.getScriptProperties();
@@ -140,9 +140,9 @@ function obterConfigMatching_() {
     emailsBloqueados: listaDePropriedade_(p.EMAILS_BLOQUEADOS, []),
     // Cópia das demandas prioritárias (opcional), além de ESCRITORIO_EMAIL.
     emailsPrioridade: listaDePropriedade_(p.EMAILS_PRIORIDADE, []),
-    // Avaliação de um edital escolhido: por padrão só fica registrada na aba Demandas (sem e-mail
-    // ao Escritório, salvo se for prioritária), para não sobrecarregar a equipe. 'sim' religa o aviso.
-    avisarAvaliacoes: /^(sim|true|1)$/i.test(String(p.AVISAR_AVALIACOES || '').trim()),
+    // Avaliação de um edital escolhido: e-mail ao Escritório ligado (fase de testes). 'nao' deixa a
+    // avaliação só na aba Demandas (prioritárias continuam avisando), para não sobrecarregar a equipe.
+    avisarAvaliacoes: !/^(nao|não|false|0)$/i.test(String(p.AVISAR_AVALIACOES || '').trim()),
     retencaoAcessosMeses: parseInt(p.RETENCAO_ACESSOS_MESES, 10) >= 1
       ? parseInt(p.RETENCAO_ACESSOS_MESES, 10) : CONFIG_MATCHING.RETENCAO_ACESSOS_MESES_PADRAO
   };

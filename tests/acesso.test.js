@@ -331,17 +331,17 @@ test('avaliação de um edital: só ele vai para a IA e o card aparece mesmo com
   assert.match(linha[cab.indexOf('Edital avaliado')], /^LINHA-3 — Call X \(Unitaid\)$/);
   assert.equal(linha[cab.indexOf('Versão do prompt')], 'matching-v3+avaliacao-v1');
 
-  assert.equal(emails.length, 0, 'por padrão a avaliação fica só na planilha, sem e-mail');
-});
-
-test('avaliação de um edital: e-mail ao Escritório só se AVISAR_AVALIACOES = sim ou se for prioritária', () => {
-  let { ctx, emails } = criarContexto(montarPlanilha(), [respostaClaude(AVALIACAO_IA)], { props: { AVISAR_AVALIACOES: 'sim' } });
-  assert.equal(postar(ctx, envioValido({ idOportunidade: 'LINHA-3' })).ok, true);
   assert.equal(emails.length, 1, 'só o Escritório recebe e-mail');
   assert.match(emails[0].subject, /Avaliação de edital/);
   assert.match(emails[0].htmlBody, /Edital avaliado/);
+});
 
-  ({ ctx, emails } = criarContexto(montarPlanilha(), [respostaClaude(AVALIACAO_IA)]));
+test('avaliação de um edital com AVISAR_AVALIACOES = nao: só a prioritária avisa o Escritório', () => {
+  let { ctx, emails } = criarContexto(montarPlanilha(), [respostaClaude(AVALIACAO_IA)], { props: { AVISAR_AVALIACOES: 'nao' } });
+  assert.equal(postar(ctx, envioValido({ idOportunidade: 'LINHA-3' })).ok, true);
+  assert.equal(emails.length, 0, 'fica só na planilha');
+
+  ({ ctx, emails } = criarContexto(montarPlanilha(), [respostaClaude(AVALIACAO_IA)], { props: { AVISAR_AVALIACOES: 'nao' } }));
   assert.equal(postar(ctx, envioValido({ idOportunidade: 'LINHA-3', valorEstimado: 'Acima de R$ 5 milhões' })).ok, true);
   assert.equal(emails.length, 1, 'prioritária avisa o Escritório mesmo com o aviso desligado');
   assert.match(emails[0].subject, /PRIORITÁRIA/);
@@ -415,7 +415,7 @@ const ID_PEDIDO = '0f1e2d3c-4b5a-6978-8796-a5b4c3d2e1f0';
 
 test('pedido repetido com o mesmo idPedido devolve o resultado guardado, sem nova chamada à IA', () => {
   const abas = montarPlanilha();
-  const { ctx, requisicoes, emails } = criarContexto(abas, [respostaClaude(AVALIACAO_IA)], { props: { AVISAR_AVALIACOES: 'sim' } });
+  const { ctx, requisicoes, emails } = criarContexto(abas, [respostaClaude(AVALIACAO_IA)]);
   const r1 = postar(ctx, envioValido({ idOportunidade: 'LINHA-3', idPedido: ID_PEDIDO }));
   assert.equal(r1.ok, true, JSON.stringify(r1));
   const r2 = postar(ctx, envioValido({ idOportunidade: 'LINHA-3', idPedido: ID_PEDIDO }));

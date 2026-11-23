@@ -32,19 +32,39 @@ var UNIDADES_FIOCRUZ = [
   'Outra'
 ];
 
+// Base: Documento de Áreas e Linhas de Pesquisa da Fiocruz (VPPCB, v.12, 2018), somado aos temas
+// mais pedidos pelos financiadores. Nomes antigos mantidos (demandas já registradas).
 var AREAS_TEMATICAS = [
   'Doenças infecciosas e negligenciadas',
   'Arboviroses e vetores',
-  'Vacinas, biofármacos e insumos',
-  'Clima e saúde',
+  'Microbiologia, virologia e parasitologia',
+  'Imunidade e inflamação',
+  'Doenças crônicas não transmissíveis',
+  'Saúde mental, álcool e outras drogas',
   'Saúde materno-infantil',
-  'Saúde digital e ciência de dados',
-  'Vigilância em saúde',
-  'Sistemas e políticas de saúde',
-  'Educação e formação em saúde',
-  'Territórios, comunidades e determinantes sociais',
-  'Biodiversidade e ambiente',
+  'Gênero, envelhecimento e saúde',
+  'Alimentação e nutrição',
+  'Pesquisa clínica e ensaios clínicos',
+  'Vacinas, biofármacos e insumos',
+  'Fármacos e medicamentos',
+  'Diagnósticos',
+  'Genômica, genética e biologia de sistemas',
+  'Nanotecnologia e novos materiais',
+  'Processos industriais e produção em saúde',
   'Inovação e desenvolvimento tecnológico',
+  'Saúde digital e ciência de dados',
+  'Epidemiologia e métodos quantitativos',
+  'Vigilância em saúde',
+  'Clima e saúde',
+  'Biodiversidade e ambiente',
+  'Sistemas e políticas de saúde',
+  'Avaliação e economia da saúde',
+  'Promoção da saúde',
+  'Territórios, comunidades e determinantes sociais',
+  'Ciências humanas e sociais em saúde',
+  'Informação e comunicação em saúde',
+  'Educação e formação em saúde',
+  'Divulgação científica',
   'Outra'
 ];
 

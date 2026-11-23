@@ -10,7 +10,7 @@
  * normalizarCamposExtraidos() é pura (testada no Node carregando todos os .gs).
  */
 
-var PROMPT_EXTRACAO_VERSAO = 'extracao-v1';
+var PROMPT_EXTRACAO_VERSAO = 'extracao-v2'; // v2: lista de áreas do documento da VPPCB
 
 var LIMITE_ARQUIVO_BYTES = 10 * 1024 * 1024;          // 10 MB
 var LIMITE_CORPO_EXTRACAO_BYTES = 15 * 1024 * 1024;   // base64 ocupa ~4/3 do arquivo

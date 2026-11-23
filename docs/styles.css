@@ -368,8 +368,13 @@ input[type="search"] {
   width: 100%; font: inherit; color: inherit; background: #fff;
   border: 1px solid #8a96a3; border-radius: 6px; padding: .55rem .65rem;
 }
-.filtros { display: grid; grid-template-columns: 2fr 1fr; gap: 0 1rem; margin-top: 1rem; }
-@media (max-width: 36rem) { .filtros { grid-template-columns: 1fr; } }
+.filtros { display: grid; grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr)); gap: 0 1rem; margin-top: 1rem; }
+.filtros .campo { margin-bottom: .9rem; }
+.filtros .campo[hidden] { display: none; }
+.filtro-busca { grid-column: 1 / -1; }
+.filtro-acoes { display: flex; align-items: flex-end; }
+.filtros select { width: 100%; }
+.nota-filtros { margin: -.4rem 0 1rem; font-size: .85rem; color: var(--cor-texto-suave); }
 .contagem { margin: -.5rem 0 .9rem; color: var(--cor-texto-suave); font-size: .95rem; }
 
 .chip-prazo { font-size: .82rem; font-weight: 700; border-radius: 999px; padding: .15rem .65rem; background: #e3e8ed; color: #2c3640; }

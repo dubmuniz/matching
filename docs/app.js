@@ -27,11 +27,16 @@
       'Fiocruz Mato Grosso do Sul', 'Fiocruz Piauí', 'Fiocruz Rondônia', 'Outra'
     ],
     areas: [
-      'Doenças infecciosas e negligenciadas', 'Arboviroses e vetores', 'Vacinas, biofármacos e insumos',
-      'Clima e saúde', 'Saúde materno-infantil', 'Saúde digital e ciência de dados', 'Vigilância em saúde',
-      'Sistemas e políticas de saúde', 'Educação e formação em saúde',
-      'Territórios, comunidades e determinantes sociais', 'Biodiversidade e ambiente',
-      'Inovação e desenvolvimento tecnológico', 'Outra'
+      'Doenças infecciosas e negligenciadas', 'Arboviroses e vetores', 'Microbiologia, virologia e parasitologia',
+      'Imunidade e inflamação', 'Doenças crônicas não transmissíveis', 'Saúde mental, álcool e outras drogas',
+      'Saúde materno-infantil', 'Gênero, envelhecimento e saúde', 'Alimentação e nutrição',
+      'Pesquisa clínica e ensaios clínicos', 'Vacinas, biofármacos e insumos', 'Fármacos e medicamentos',
+      'Diagnósticos', 'Genômica, genética e biologia de sistemas', 'Nanotecnologia e novos materiais',
+      'Processos industriais e produção em saúde', 'Inovação e desenvolvimento tecnológico',
+      'Saúde digital e ciência de dados', 'Epidemiologia e métodos quantitativos', 'Vigilância em saúde',
+      'Clima e saúde', 'Biodiversidade e ambiente', 'Sistemas e políticas de saúde', 'Avaliação e economia da saúde',
+      'Promoção da saúde', 'Territórios, comunidades e determinantes sociais', 'Ciências humanas e sociais em saúde',
+      'Informação e comunicação em saúde', 'Educação e formação em saúde', 'Divulgação científica', 'Outra'
     ],
     maturidade: ['Ideia inicial', 'Projeto estruturado', 'Em execução, buscando ampliação', 'Solução pronta para escalar'],
     valorEstimado: ['Até R$ 250 mil', 'R$ 250 mil–1 milhão', 'R$ 1–5 milhões', 'Acima de R$ 5 milhões', 'Não sei'],
@@ -986,8 +991,8 @@
     var chaves = window.ApresentacaoPptx.iconesUsados(slides).filter(function (k) {
       return window.ApresentacaoPptx.ICONES.indexOf(k) >= 0;
     });
-    return Promise.all([arquivoEmBase64('img/logo-fiocruz-branco.png?v=20')].concat(chaves.map(function (k) {
-      return arquivoEmBase64('img/icones/' + k + '.png?v=20');
+    return Promise.all([arquivoEmBase64('img/logo-fiocruz-branco.png?v=21')].concat(chaves.map(function (k) {
+      return arquivoEmBase64('img/icones/' + k + '.png?v=21');
     }))).then(function (lista) {
       var icones = {};
       chaves.forEach(function (k, i) { if (lista[i + 1]) icones[k] = lista[i + 1]; });
@@ -1502,10 +1507,57 @@
     return data >= hoje && data <= limite;
   }
 
+  /* Filtros de área, valor, moeda e via (docs/filtros.js): dados calculados uma vez por lista. */
+  var FILTROS_EXTRAS = ['filtro-area', 'filtro-valor', 'filtro-moeda', 'filtro-via'];
+  var dadosFiltro = null, listaDosDados = null;
+
+  function dadosDosFiltros() {
+    if (!window.FiltrosOportunidades) return null;
+    if (listaDosDados !== oportunidades) {
+      listaDosDados = oportunidades;
+      dadosFiltro = (oportunidades || []).map(window.FiltrosOportunidades.dadosDeFiltro);
+      montarOpcoesDosFiltros();
+    }
+    return dadosFiltro;
+  }
+
+  /** Preenche os seletores só com o que existe na lista (com a contagem), mantendo a escolha atual. */
+  function montarOpcoesDosFiltros() {
+    var op = window.FiltrosOportunidades.opcoesDosFiltros(dadosFiltro);
+    [['filtro-area', op.areas], ['filtro-valor', op.valores], ['filtro-moeda', op.moedas], ['filtro-via', op.vias]].forEach(function (par) {
+      var sel = $(par[0]);
+      var atual = sel.value;
+      while (sel.options.length > 1) sel.remove(1);
+      par[1].forEach(function (o) {
+        var opt = el('option', null, o.nome + ' (' + o.total + ')');
+        opt.value = o.valor;
+        sel.appendChild(opt);
+      });
+      sel.value = atual;
+      if (sel.value !== atual) sel.value = '';
+      sel.closest('.campo').hidden = par[1].length < 2 && !atual;
+    });
+  }
+
+  function filtrosEscolhidos() {
+    return { area: $('filtro-area').value, valor: $('filtro-valor').value, moeda: $('filtro-moeda').value, via: $('filtro-via').value };
+  }
+
+  function limparFiltros() {
+    $('busca').value = '';
+    $('filtro-prazo').value = 'abertas';
+    FILTROS_EXTRAS.forEach(function (id) { $(id).value = ''; });
+    desenharOportunidades();
+    $('busca').focus();
+  }
+
   function filtrarOportunidades() {
     var termo = semAcentos(limpar($('busca').value));
     var prazo = $('filtro-prazo').value;
-    return (oportunidades || []).filter(function (o) {
+    var dados = dadosDosFiltros();
+    var extras = filtrosEscolhidos();
+    return (oportunidades || []).filter(function (o, i) {
+      if (dados && !window.FiltrosOportunidades.passaNosFiltros(dados[i], extras)) return false;
       if (prazo === 'abertas' && o.prazo_status === 'encerrado') return false;
       if (prazo === 'encerradas' && o.prazo_status !== 'encerrado') return false;
       if ((prazo === 'meses3' || prazo === 'meses6') && !prazoDentroDe(o, prazo === 'meses3' ? 3 : 6)) return false;
@@ -1520,6 +1572,9 @@
     if (!oportunidades) return;
     var filtradas = filtrarOportunidades();
     var total = oportunidades.length;
+    var extras = filtrosEscolhidos();
+    $('limpar-filtros').hidden = !(limpar($('busca').value) || $('filtro-prazo').value !== 'abertas' ||
+      extras.area || extras.valor || extras.moeda || extras.via);
     $('contagem-oportunidades').textContent = filtradas.length === total
       ? total + ' oportunidade' + (total === 1 ? '' : 's') + '.'
       : filtradas.length + ' de ' + total + ' oportunidades.';
@@ -1656,6 +1711,8 @@
     $('botao-sair').addEventListener('click', sair);
     $('busca').addEventListener('input', desenharOportunidades);
     $('filtro-prazo').addEventListener('change', desenharOportunidades);
+    FILTROS_EXTRAS.forEach(function (id) { $(id).addEventListener('change', desenharOportunidades); });
+    $('limpar-filtros').addEventListener('click', limparFiltros);
     window.addEventListener('hashchange', aoMudarEndereco);
     if (MODO_MOCK) {
       var aviso = el('p', 'aviso-mock', 'Modo de teste: nada é enviado; os resultados são exemplos fixos.' +
